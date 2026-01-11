@@ -5,7 +5,7 @@ Dalis Kulubu icin hava durumu analiz sistemi
 """
 import sys
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from config import (
     LOCATION, WEATHER_MODELS, 
@@ -20,6 +20,14 @@ from src.llm_analyzer import analyze_weather
 from src.email_service import send_report_email
 from src.visualizer import create_windguru_chart
 
+# Turkey timezone (UTC+3)
+TURKEY_TZ = timezone(timedelta(hours=3))
+
+
+def get_turkey_now():
+    """Get current time in Turkey timezone"""
+    return datetime.now(TURKEY_TZ)
+
 
 def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "today"):
     """
@@ -30,15 +38,18 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         no_email: If True, skip email sending
         forecast_day: "today" or "tomorrow"
     """
+    # Use Turkey time for date calculations
+    now_tr = get_turkey_now()
+    
     # Determine target date
     if forecast_day == "tomorrow":
-        target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        target_date = (now_tr + timedelta(days=1)).strftime("%Y-%m-%d")
         report_title = "Yarin"
     else:
-        target_date = datetime.now().strftime("%Y-%m-%d")
+        target_date = now_tr.strftime("%Y-%m-%d")
         report_title = "Bugun"
     
-    print(f"Weather Analyst - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Weather Analyst - {now_tr.strftime('%Y-%m-%d %H:%M')} (TR)")
     print(f"Location: {LOCATION['name']}")
     print(f"Forecast for: {target_date} ({report_title})")
     print("-" * 50)
