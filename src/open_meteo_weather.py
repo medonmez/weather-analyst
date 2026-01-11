@@ -25,10 +25,9 @@ def fetch_weather_data(lat: float, lon: float, models: List[str], target_date: O
     
     base_url = "https://api.open-meteo.com/v1/forecast"
     
-    # Essential parameters only
+    # Essential parameters only (no precipitation_probability - not supported by all models)
     hourly_params = [
         "temperature_2m",
-        "precipitation_probability",
         "precipitation",
         "visibility",
         "wind_speed_10m",
@@ -90,14 +89,13 @@ def process_weather_data(data: Dict, target_date: str) -> Dict[str, Any]:
     wind_speeds = get_values("wind_speed_10m")
     wind_gusts = get_values("wind_gusts_10m")
     temps = get_values("temperature_2m")
-    precip_probs = get_values("precipitation_probability")
+    precip = get_values("precipitation")
     
     return {
         "target_date": target_date,
         "times": [times[i] for i in daytime_indices if i < len(times)],
         "temperature_c": temps,
-        "precipitation_probability_pct": precip_probs,
-        "precipitation_mm": get_values("precipitation"),
+        "precipitation_mm": precip,
         "visibility_m": get_values("visibility"),
         "wind_speed_knots": wind_speeds,
         "wind_direction_deg": get_values("wind_direction_10m"),
@@ -107,7 +105,7 @@ def process_weather_data(data: Dict, target_date: str) -> Dict[str, Any]:
             "max_wind_knots": round(max(wind_speeds), 1) if wind_speeds else 0,
             "max_gust_knots": round(max(wind_gusts), 1) if wind_gusts else 0,
             "avg_temp_c": round(sum(temps) / len(temps), 1) if temps else 0,
-            "max_precip_prob_pct": max(precip_probs) if precip_probs else 0
+            "total_precip_mm": round(sum(precip), 1) if precip else 0
         }
     }
 

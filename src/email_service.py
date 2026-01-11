@@ -16,11 +16,12 @@ def send_report_email(
     location_name: str,
     analysis: str,
     raw_data: Optional[Dict[str, Any]] = None,
+    chart_bytes: Optional[bytes] = None,
     subject: Optional[str] = None,
     forecast_day: str = "today"
 ) -> dict:
     """
-    Send weather analysis report via Resend with JSON attachment
+    Send weather analysis report via Resend with JSON and chart attachments
     
     Args:
         api_key: Resend API key
@@ -29,6 +30,7 @@ def send_report_email(
         location_name: Location name for subject
         analysis: LLM analysis text
         raw_data: Raw weather data to attach as JSON
+        chart_bytes: PNG chart bytes
         subject: Optional custom subject
         forecast_day: "today" or "tomorrow"
     
@@ -57,20 +59,30 @@ def send_report_email(
         "html": html_content
     }
     
+    # Prepare attachments
+    attachments = []
+    
     # Add JSON attachment if raw_data provided
     if raw_data:
         json_str = json.dumps(raw_data, indent=2, ensure_ascii=False, default=str)
         json_bytes = json_str.encode('utf-8')
         json_base64 = base64.b64encode(json_bytes).decode('utf-8')
         
-        filename = f"weather_data_{now.strftime('%Y%m%d_%H%M')}.json"
-        
-        email_payload["attachments"] = [
-            {
-                "filename": filename,
-                "content": json_base64
-            }
-        ]
+        attachments.append({
+            "filename": f"weather_data_{now.strftime('%Y%m%d_%H%M')}.json",
+            "content": json_base64
+        })
+    
+    # Add chart PNG if provided
+    if chart_bytes:
+        chart_base64 = base64.b64encode(chart_bytes).decode('utf-8')
+        attachments.append({
+            "filename": f"weather_chart_{now.strftime('%Y%m%d_%H%M')}.png",
+            "content": chart_base64
+        })
+    
+    if attachments:
+        email_payload["attachments"] = attachments
     
     try:
         response = resend.Emails.send(email_payload)

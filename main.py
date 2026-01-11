@@ -18,6 +18,7 @@ from src.open_meteo_marine import fetch_marine_data
 from src.windy_stations import fetch_station_data
 from src.llm_analyzer import analyze_weather
 from src.email_service import send_report_email
+from src.visualizer import create_windguru_chart
 
 
 def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "today"):
@@ -70,7 +71,7 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         print(f"  [ERROR] Marine: {marine_data['error']}")
     else:
         summary = marine_data.get("summary", {})
-        print(f"  [OK] Waves: {summary.get('avg_wave_height', '?')}m avg, {summary.get('max_wave_height', '?')}m max")
+        print(f"  [OK] Waves: {summary.get('avg_wave_height_m', '?')}m avg, {summary.get('max_wave_height_m', '?')}m max")
     
     # 3. Fetch real-time station data (only for today)
     print("\nFetching station data...")
@@ -88,7 +89,15 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         station_data = {"available": False, "message": "Station data not applicable for tomorrow forecast"}
         print("  [INFO] Station data skipped for tomorrow forecast")
     
-    # 4. Analyze with LLM
+    # 4. Generate Windguru-style chart
+    print("\nGenerating chart...")
+    chart_bytes = create_windguru_chart(weather_data, marine_data, target_date)
+    if chart_bytes:
+        print("  [OK] Chart generated")
+    else:
+        print("  [INFO] Chart generation skipped (matplotlib not available)")
+    
+    # 5. Analyze with LLM
     print("\nAnalyzing with LLM...")
     analysis = analyze_weather(
         weather_data=weather_data,
@@ -118,13 +127,20 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         "station_data": station_data
     }
     
-    # 5. Send email or print
+    # 6. Send email or print
     if test_mode or no_email:
         print("\n" + "=" * 50)
         print("REPORT PREVIEW:")
         print("=" * 50)
         print(analysis)
         print("=" * 50)
+        
+        if chart_bytes:
+            # Save chart locally for testing
+            chart_path = f"/tmp/weather_chart_{target_date}.png"
+            with open(chart_path, 'wb') as f:
+                f.write(chart_bytes)
+            print(f"\nChart saved to: {chart_path}")
         
         if no_email:
             print("\nEmail sending skipped (--no-email)")
@@ -139,6 +155,7 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
             location_name=LOCATION["name"],
             analysis=analysis,
             raw_data=raw_data,
+            chart_bytes=chart_bytes,
             forecast_day=forecast_day
         )
         
