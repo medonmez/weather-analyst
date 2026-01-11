@@ -17,11 +17,12 @@ def send_report_email(
     analysis: str,
     raw_data: Optional[Dict[str, Any]] = None,
     chart_bytes: Optional[bytes] = None,
+    table_bytes: Optional[bytes] = None,
     subject: Optional[str] = None,
     forecast_day: str = "today"
 ) -> dict:
     """
-    Send weather analysis report via Resend with JSON and chart attachments
+    Send weather analysis report via Resend with JSON, chart, and table attachments
     
     Args:
         api_key: Resend API key
@@ -31,6 +32,7 @@ def send_report_email(
         analysis: LLM analysis text
         raw_data: Raw weather data to attach as JSON
         chart_bytes: PNG chart bytes
+        table_bytes: PNG table bytes
         subject: Optional custom subject
         forecast_day: "today" or "tomorrow"
     
@@ -79,6 +81,14 @@ def send_report_email(
         attachments.append({
             "filename": f"weather_chart_{now.strftime('%Y%m%d_%H%M')}.png",
             "content": chart_base64
+        })
+    
+    # Add table PNG if provided
+    if table_bytes:
+        table_base64 = base64.b64encode(table_bytes).decode('utf-8')
+        attachments.append({
+            "filename": f"weather_table_{now.strftime('%Y%m%d_%H%M')}.png",
+            "content": table_base64
         })
     
     if attachments:

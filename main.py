@@ -100,13 +100,21 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         station_data = {"available": False, "message": "Station data not applicable for tomorrow forecast"}
         print("  [INFO] Station data skipped for tomorrow forecast")
     
-    # 4. Generate Windguru-style chart
-    print("\nGenerating chart...")
+    # 4. Generate Windguru-style visualizations
+    print("\nGenerating visualizations...")
     chart_bytes = create_windguru_chart(weather_data, marine_data, target_date)
     if chart_bytes:
         print("  [OK] Chart generated")
     else:
-        print("  [INFO] Chart generation skipped (matplotlib not available)")
+        print("  [INFO] Chart generation skipped")
+    
+    # Generate Windguru-style table
+    from src.visualizer import create_windguru_table
+    table_bytes = create_windguru_table(weather_data, marine_data, target_date)
+    if table_bytes:
+        print("  [OK] Table generated")
+    else:
+        print("  [INFO] Table generation skipped")
     
     # 5. Analyze with LLM
     print("\nAnalyzing with LLM...")
@@ -138,7 +146,7 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         "station_data": station_data
     }
     
-    # 6. Send email or print
+    # 7. Send email or print
     if test_mode or no_email:
         print("\n" + "=" * 50)
         print("REPORT PREVIEW:")
@@ -147,11 +155,16 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         print("=" * 50)
         
         if chart_bytes:
-            # Save chart locally for testing
             chart_path = f"/tmp/weather_chart_{target_date}.png"
             with open(chart_path, 'wb') as f:
                 f.write(chart_bytes)
             print(f"\nChart saved to: {chart_path}")
+        
+        if table_bytes:
+            table_path = f"/tmp/weather_table_{target_date}.png"
+            with open(table_path, 'wb') as f:
+                f.write(table_bytes)
+            print(f"Table saved to: {table_path}")
         
         if no_email:
             print("\nEmail sending skipped (--no-email)")
@@ -167,6 +180,7 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
             analysis=analysis,
             raw_data=raw_data,
             chart_bytes=chart_bytes,
+            table_bytes=table_bytes,
             forecast_day=forecast_day
         )
         
