@@ -13,11 +13,9 @@ LOCATION = {
     "lon": 27.4575
 }
 
-# Weather models to fetch
+# Weather models to fetch (4 models)
 WEATHER_MODELS = [
     "ecmwf_ifs",
-    "ecmwf_ifs025",
-    "ecmwf_aifs025_single",
     "icon_eu",
     "meteofrance_seamless",
     "gfs_seamless"
@@ -49,9 +47,10 @@ RAPOR FORMATI:
    - Genel hava durumu ozeti
 
 2. MODEL KARSILASTIRMASI
-   - Her model icin saatlik verileri tablo formatinda goster
+   - Her model icin SAATLIK verileri tablo formatinda goster (3 saatlik degil, her saat ayri olacak)
    - Modeller arasi farklari ve tutarliliklari belirt
    - Hangi modellerin birbirine yakin tahminler verdiklerini analiz et
+   - NOT: Bodrum bolgesi ve gunluk tahminler icin ICON-EU modeli genellikle iyi sonuc vermektedir, bunu degerlendirilmende dikkate alabilirsin
 
 3. RUZGAR ANALIZI
    - Saatlik ruzgar hizi ve hamle (gust) degisimi
@@ -73,5 +72,5 @@ RAPOR FORMATI:
    - Tekne operasyonu icin uygunluk durumu
    - Oneriler ve uyarilar
 
-NOT: Tablolari markdown formatinda olustur. Saatlik verileri net goster. Profesyonel ve objektif bir dil kullan.
+NOT: Tablolari markdown formatinda olustur. SAATLIK verileri net goster (her saat ayri satir). Profesyonel ve objektif bir dil kullan.
 """
