@@ -3,7 +3,7 @@ Open-Meteo Weather API Fetcher
 Fetches weather data from multiple models for comparison
 """
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Any
 
 # Conversion factor: m/s to knots
@@ -17,20 +17,18 @@ def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, A
     Args:
         lat: Latitude
         lon: Longitude
-        models: List of model names (e.g., ["icon_seamless", "gfs_seamless"])
+        models: List of model names
     
     Returns:
         Dictionary with model forecasts
     """
     base_url = "https://api.open-meteo.com/v1/forecast"
     
-    # Parameters to fetch
+    # Essential parameters only - no humidity, weather_code
     hourly_params = [
         "temperature_2m",
-        "relative_humidity_2m",
         "precipitation_probability",
         "precipitation",
-        "weather_code",
         "visibility",
         "wind_speed_10m",
         "wind_direction_10m",
@@ -46,7 +44,8 @@ def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, A
             "hourly": ",".join(hourly_params),
             "models": model,
             "timezone": "Europe/Istanbul",
-            "forecast_days": 2
+            "forecast_days": 2,
+            "wind_speed_unit": "kn"  # Request wind in knots directly
         }
         
         try:
@@ -95,33 +94,28 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
         values = hourly.get(key, [])
         return [values[i] for i in daytime_indices if i < len(values) and values[i] is not None]
     
-    wind_speeds_ms = get_values("wind_speed_10m")
-    wind_gusts_ms = get_values("wind_gusts_10m")
+    # Wind is already in knots (requested via API param)
+    wind_speeds = get_values("wind_speed_10m")
+    wind_gusts = get_values("wind_gusts_10m")
     temps = get_values("temperature_2m")
     precip_probs = get_values("precipitation_probability")
     
-    # Convert to knots
-    wind_speeds_knots = [v * MS_TO_KNOTS if v else 0 for v in wind_speeds_ms]
-    wind_gusts_knots = [v * MS_TO_KNOTS if v else 0 for v in wind_gusts_ms]
-    
     return {
         "times": [times[i] for i in daytime_indices if i < len(times)],
-        "temperature": temps,
-        "humidity": get_values("relative_humidity_2m"),
-        "precipitation_probability": precip_probs,
-        "precipitation": get_values("precipitation"),
-        "weather_code": get_values("weather_code"),
-        "visibility": get_values("visibility"),
-        "wind_speed_knots": wind_speeds_knots,
-        "wind_direction": get_values("wind_direction_10m"),
-        "wind_gusts_knots": wind_gusts_knots,
+        "temperature_c": temps,
+        "precipitation_probability_pct": precip_probs,
+        "precipitation_mm": get_values("precipitation"),
+        "visibility_m": get_values("visibility"),
+        "wind_speed_knots": wind_speeds,
+        "wind_direction_deg": get_values("wind_direction_10m"),
+        "wind_gusts_knots": wind_gusts,
         # Summary stats
         "summary": {
-            "avg_wind_knots": round(sum(wind_speeds_knots) / len(wind_speeds_knots), 1) if wind_speeds_knots else 0,
-            "max_wind_knots": round(max(wind_speeds_knots), 1) if wind_speeds_knots else 0,
-            "max_gust_knots": round(max(wind_gusts_knots), 1) if wind_gusts_knots else 0,
-            "avg_temp": round(sum(temps) / len(temps), 1) if temps else 0,
-            "max_precip_prob": max(precip_probs) if precip_probs else 0
+            "avg_wind_knots": round(sum(wind_speeds) / len(wind_speeds), 1) if wind_speeds else 0,
+            "max_wind_knots": round(max(wind_speeds), 1) if wind_speeds else 0,
+            "max_gust_knots": round(max(wind_gusts), 1) if wind_gusts else 0,
+            "avg_temp_c": round(sum(temps) / len(temps), 1) if temps else 0,
+            "max_precip_prob_pct": max(precip_probs) if precip_probs else 0
         }
     }
 
@@ -129,12 +123,16 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
 def get_model_display_name(model_id: str) -> str:
     """Get human-readable model name"""
     names = {
-        "icon_seamless": "ICON (DWD)",
-        "gfs_seamless": "GFS (NOAA)",
-        "ecmwf_ifs025": "ECMWF IFS",
+        "ecmwf_ifs": "ECMWF IFS",
+        "ecmwf_ifs025": "ECMWF IFS 0.25",
         "ecmwf_ifs04": "ECMWF IFS HRES 9km",
         "ecmwf_aifs025": "ECMWF AIFS",
-        "arpege_seamless": "ARPEGE (Meteo-France)",
+        "ecmwf_aifs025_single": "ECMWF AIFS Single",
+        "icon_seamless": "ICON (DWD)",
+        "icon_eu": "ICON-EU (DWD)",
+        "gfs_seamless": "GFS (NOAA)",
+        "meteofrance_seamless": "Meteo-France",
+        "arpege_seamless": "ARPEGE",
         "gem_seamless": "GEM (Canada)"
     }
     return names.get(model_id, model_id)

@@ -15,25 +15,13 @@ LOCATION = {
 
 # Weather models to fetch
 WEATHER_MODELS = [
-    "icon_seamless",
-    "gfs_seamless", 
-    "ecmwf_ifs025",      # ECMWF IFS
-    "ecmwf_ifs04",       # ECMWF IFS HRES 9km
-    "ecmwf_aifs025",     # ECMWF AIFS
-    "arpege_seamless"
+    "ecmwf_ifs",
+    "ecmwf_ifs025",
+    "ecmwf_aifs025_single",
+    "icon_eu",
+    "meteofrance_seamless",
+    "gfs_seamless"
 ]
-
-# Safety thresholds for diving operations
-SAFETY_THRESHOLDS = {
-    "wind_knots_warning": 15,
-    "wind_knots_risky": 20,
-    "wind_knots_dangerous": 30,
-    "gust_knots_dangerous": 35,
-    "wave_meters_warning": 1.0,
-    "wave_meters_risky": 1.5,
-    "wave_meters_dangerous": 2.0,
-    "visibility_km_risky": 3
-}
 
 # API Keys
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -48,27 +36,42 @@ EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
 LLM_MODEL = "google/gemini-3-pro-preview"
 LLM_BASE_URL = "https://openrouter.ai/api/v1"
 
-# System prompt - neutral, no model bias
-SYSTEM_PROMPT = """Sen denizcilik ve dalis operasyonlari icin meteoroloji danismanisin. 
+# System prompt - professional, detailed analysis
+SYSTEM_PROMPT = """Sen denizcilik ve dalis operasyonlari konusunda uzman bir meteoroloji danismanisin.
 
-Gorev: Farkli hava tahmin modellerinden gelen verileri analiz ederek dalis kulubu icin tekne operasyonu risk degerlendirmesi yap.
+GOREV:
+Sana JSON formatinda farkli hava tahmin modellerinden gelen veriler gonderilecek. Bu verileri detayli sekilde analiz ederek profesyonel bir meteoroloji raporu hazirla.
 
-Analiz edilecek parametreler:
-- Ruzgar hizi (knot) ve hamle (gust)
-- Dalga yuksekligi ve swell
-- Gorus mesafesi
-- Yagis durumu
+RAPOR FORMATI:
 
-Karar kriterleri:
-- Ruzgar 15-20 knot: Orta risk
-- Ruzgar 20+ knot: Yuksek risk
-- Hamle 30+ knot: Operasyon onerilmez
-- Dalga 1.0-1.5m: Orta deniz durumu
-- Dalga 1.5m+: Zorlu kosullar
+1. GENEL BAKIS
+   - Tarih ve konum bilgisi
+   - Genel hava durumu ozeti
 
-Cikti:
-- Modelleri karsilastir
-- Tutarsizliklari belirt
-- Net karar ver: UYGUN / SINIRLI UYGUN / UYGUN DEGIL / OPERASYON ONERILMEZ
-- Kisa ozet ekle
+2. MODEL KARSILASTIRMASI
+   - Her model icin saatlik verileri tablo formatinda goster
+   - Modeller arasi farklari ve tutarliliklari belirt
+   - Hangi modellerin birbirine yakin tahminler verdiklerini analiz et
+
+3. RUZGAR ANALIZI
+   - Saatlik ruzgar hizi ve hamle (gust) degisimi
+   - Kritik saat dilimleri
+   - Ruzgar yonu ve degisimi
+
+4. DALGA VE DENIZ DURUMU
+   - Dalga yukseklikleri
+   - Swell bilgisi (varsa)
+   - Deniz durumu tahmini
+
+5. DIGER FAKTORLER
+   - Yagis durumu
+   - Gorus mesafesi
+   - Sicaklik
+
+6. SONUC VE DEGERLENDIRME
+   - Butun verilerin genel degerlendirmesi
+   - Tekne operasyonu icin uygunluk durumu
+   - Oneriler ve uyarilar
+
+NOT: Tablolari markdown formatinda olustur. Saatlik verileri net goster. Profesyonel ve objektif bir dil kullan.
 """
