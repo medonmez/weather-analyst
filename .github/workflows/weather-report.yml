@@ -1,0 +1,37 @@
+name: Weather Report
+
+on:
+  schedule:
+    # 07:00 Turkey time (UTC+3) = 04:00 UTC
+    - cron: '0 4 * * *'
+    # 19:00 Turkey time (UTC+3) = 16:00 UTC
+    - cron: '0 16 * * *'
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Run weather report
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          WINDY_API_KEY: ${{ secrets.WINDY_API_KEY }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        run: python main.py
