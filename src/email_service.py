@@ -16,7 +16,8 @@ def send_report_email(
     location_name: str,
     analysis: str,
     raw_data: Optional[Dict[str, Any]] = None,
-    subject: Optional[str] = None
+    subject: Optional[str] = None,
+    forecast_day: str = "today"
 ) -> dict:
     """
     Send weather analysis report via Resend with JSON attachment
@@ -29,6 +30,7 @@ def send_report_email(
         analysis: LLM analysis text
         raw_data: Raw weather data to attach as JSON
         subject: Optional custom subject
+        forecast_day: "today" or "tomorrow"
     
     Returns:
         Resend API response
@@ -40,12 +42,12 @@ def send_report_email(
     
     now = datetime.now()
     date_str = now.strftime("%d %B %Y")
-    time_of_day = "Sabah" if now.hour < 12 else "Aksam"
+    report_type = "Bugun" if forecast_day == "today" else "Yarin"
     
     if not subject:
-        subject = f"{location_name} Dalis Raporu - {date_str} {time_of_day}"
+        subject = f"{location_name} Raporu - {report_type} - {date_str}"
     
-    html_content = generate_html_email(analysis, location_name, date_str, time_of_day)
+    html_content = generate_html_email(analysis, location_name, date_str, report_type)
     
     # Prepare email payload
     email_payload = {

@@ -2,13 +2,18 @@ name: Weather Report
 
 on:
   schedule:
-    # 07:00 Turkey time (UTC+3) = 04:00 UTC
+    # 07:00 Turkey time (UTC+3) = 04:00 UTC - Today's forecast
     - cron: '0 4 * * *'
-    # 19:00 Turkey time (UTC+3) = 16:00 UTC
-    - cron: '0 16 * * *'
+    # 16:01 Turkey time (UTC+3) = 13:01 UTC - Tomorrow's forecast
+    - cron: '1 13 * * *'
   
   # Manual trigger for testing
   workflow_dispatch:
+    inputs:
+      forecast_day:
+        description: 'Forecast day (today/tomorrow)'
+        required: false
+        default: 'today'
 
 jobs:
   send-report:
@@ -27,6 +32,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       
+      - name: Determine forecast day
+        id: forecast
+        run: |
+          HOUR=$(TZ='Europe/Istanbul' date +%H)
+          if [ "$HOUR" -ge 13 ]; then
+            echo "day=tomorrow" >> $GITHUB_OUTPUT
+          else
+            echo "day=today" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Run weather report
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -34,4 +49,5 @@ jobs:
           WINDY_API_KEY: ${{ secrets.WINDY_API_KEY }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-        run: python main.py
+          FORECAST_DAY: ${{ steps.forecast.outputs.day }}
+        run: python main.py --day $FORECAST_DAY

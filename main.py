@@ -5,7 +5,7 @@ Dalis Kulubu icin hava durumu analiz sistemi
 """
 import sys
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import (
     LOCATION, WEATHER_MODELS, 
@@ -20,16 +20,26 @@ from src.llm_analyzer import analyze_weather
 from src.email_service import send_report_email
 
 
-def main(test_mode: bool = False, no_email: bool = False):
+def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "today"):
     """
     Main orchestration function
     
     Args:
         test_mode: If True, print output instead of sending email
         no_email: If True, skip email sending
+        forecast_day: "today" or "tomorrow"
     """
+    # Determine target date
+    if forecast_day == "tomorrow":
+        target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        report_title = "Yarin"
+    else:
+        target_date = datetime.now().strftime("%Y-%m-%d")
+        report_title = "Bugun"
+    
     print(f"Weather Analyst - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"Location: {LOCATION['name']}")
+    print(f"Forecast for: {target_date} ({report_title})")
     print("-" * 50)
     
     # 1. Fetch weather data from multiple models
@@ -37,7 +47,8 @@ def main(test_mode: bool = False, no_email: bool = False):
     weather_data = fetch_weather_data(
         lat=LOCATION["lat"],
         lon=LOCATION["lon"],
-        models=WEATHER_MODELS
+        models=WEATHER_MODELS,
+        target_date=target_date
     )
     
     for model, data in weather_data.items():
@@ -51,7 +62,8 @@ def main(test_mode: bool = False, no_email: bool = False):
     print("\nFetching marine data...")
     marine_data = fetch_marine_data(
         lat=LOCATION["lat"],
-        lon=LOCATION["lon"]
+        lon=LOCATION["lon"],
+        target_date=target_date
     )
     
     if "error" in marine_data:
@@ -60,18 +72,21 @@ def main(test_mode: bool = False, no_email: bool = False):
         summary = marine_data.get("summary", {})
         print(f"  [OK] Waves: {summary.get('avg_wave_height', '?')}m avg, {summary.get('max_wave_height', '?')}m max")
     
-    # 3. Fetch real-time station data
+    # 3. Fetch real-time station data (only for today)
     print("\nFetching station data...")
-    station_data = fetch_station_data(
-        api_key=WINDY_API_KEY,
-        lat=LOCATION["lat"],
-        lon=LOCATION["lon"]
-    )
-    
-    if station_data.get("available"):
-        print(f"  [OK] Station: {station_data.get('station_name')}")
+    if forecast_day == "today":
+        station_data = fetch_station_data(
+            api_key=WINDY_API_KEY,
+            lat=LOCATION["lat"],
+            lon=LOCATION["lon"]
+        )
+        if station_data.get("available"):
+            print(f"  [OK] Station: {station_data.get('station_name')}")
+        else:
+            print(f"  [INFO] {station_data.get('message', 'No station data')}")
     else:
-        print(f"  [INFO] {station_data.get('message', 'No station data')}")
+        station_data = {"available": False, "message": "Station data not applicable for tomorrow forecast"}
+        print("  [INFO] Station data skipped for tomorrow forecast")
     
     # 4. Analyze with LLM
     print("\nAnalyzing with LLM...")
@@ -82,7 +97,9 @@ def main(test_mode: bool = False, no_email: bool = False):
         api_key=OPENROUTER_API_KEY,
         model=LLM_MODEL,
         system_prompt=SYSTEM_PROMPT,
-        location_name=LOCATION["name"]
+        location_name=LOCATION["name"],
+        forecast_day=forecast_day,
+        target_date=target_date
     )
     
     if analysis.startswith("HATA"):
@@ -93,6 +110,8 @@ def main(test_mode: bool = False, no_email: bool = False):
     # Prepare raw data for JSON attachment
     raw_data = {
         "generated_at": datetime.now().isoformat(),
+        "forecast_for": target_date,
+        "forecast_day": forecast_day,
         "location": LOCATION,
         "weather_models": weather_data,
         "marine_data": marine_data,
@@ -119,7 +138,8 @@ def main(test_mode: bool = False, no_email: bool = False):
             from_email=EMAIL_FROM,
             location_name=LOCATION["name"],
             analysis=analysis,
-            raw_data=raw_data  # JSON attachment
+            raw_data=raw_data,
+            forecast_day=forecast_day
         )
         
         if result.get("success"):
@@ -135,6 +155,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Weather Analyst for Diving Club")
     parser.add_argument("--test", action="store_true", help="Test mode - print analysis without sending email")
     parser.add_argument("--no-email", action="store_true", help="Skip email sending")
+    parser.add_argument("--day", choices=["today", "tomorrow"], default="today", help="Forecast day")
     
     args = parser.parse_args()
-    main(test_mode=args.test, no_email=args.no_email)
+    main(test_mode=args.test, no_email=args.no_email, forecast_day=args.day)

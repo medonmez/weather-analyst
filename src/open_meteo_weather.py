@@ -4,13 +4,10 @@ Fetches weather data from multiple models for comparison
 """
 import requests
 from datetime import datetime
-from typing import Dict, List, Any
-
-# Conversion factor: m/s to knots
-MS_TO_KNOTS = 1.94384
+from typing import Dict, List, Any, Optional
 
 
-def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, Any]:
+def fetch_weather_data(lat: float, lon: float, models: List[str], target_date: Optional[str] = None) -> Dict[str, Any]:
     """
     Fetch weather forecast from multiple models
     
@@ -18,13 +15,17 @@ def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, A
         lat: Latitude
         lon: Longitude
         models: List of model names
+        target_date: Target date in YYYY-MM-DD format (default: today)
     
     Returns:
         Dictionary with model forecasts
     """
+    if target_date is None:
+        target_date = datetime.now().strftime("%Y-%m-%d")
+    
     base_url = "https://api.open-meteo.com/v1/forecast"
     
-    # Essential parameters only - no humidity, weather_code
+    # Essential parameters only
     hourly_params = [
         "temperature_2m",
         "precipitation_probability",
@@ -44,8 +45,8 @@ def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, A
             "hourly": ",".join(hourly_params),
             "models": model,
             "timezone": "Europe/Istanbul",
-            "forecast_days": 2,
-            "wind_speed_unit": "kn"  # Request wind in knots directly
+            "forecast_days": 3,
+            "wind_speed_unit": "kn"
         }
         
         try:
@@ -53,8 +54,7 @@ def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, A
             response.raise_for_status()
             data = response.json()
             
-            # Process and structure the data
-            results[model] = process_weather_data(data)
+            results[model] = process_weather_data(data, target_date)
             
         except requests.RequestException as e:
             results[model] = {"error": str(e)}
@@ -62,7 +62,7 @@ def fetch_weather_data(lat: float, lon: float, models: List[str]) -> Dict[str, A
     return results
 
 
-def process_weather_data(data: Dict) -> Dict[str, Any]:
+def process_weather_data(data: Dict, target_date: str) -> Dict[str, Any]:
     """Process raw API response into structured format"""
     if "hourly" not in data:
         return {"error": "No hourly data"}
@@ -70,24 +70,16 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
     hourly = data["hourly"]
     times = hourly.get("time", [])
     
-    # Find today's daytime hours (08:00 - 18:00)
-    today = datetime.now().strftime("%Y-%m-%d")
-    
+    # Find target date's daytime hours (08:00 - 18:00)
     daytime_indices = []
     for i, time_str in enumerate(times):
-        if today in time_str:
+        if target_date in time_str:
             hour = int(time_str.split("T")[1].split(":")[0])
             if 8 <= hour <= 18:
                 daytime_indices.append(i)
     
     if not daytime_indices:
-        # If no today data, use first available daytime hours
-        for i, time_str in enumerate(times):
-            hour = int(time_str.split("T")[1].split(":")[0])
-            if 8 <= hour <= 18:
-                daytime_indices.append(i)
-                if len(daytime_indices) >= 11:
-                    break
+        return {"error": f"No data for {target_date}"}
     
     # Extract values for daytime, filtering out None values
     def get_values(key):
@@ -101,6 +93,7 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
     precip_probs = get_values("precipitation_probability")
     
     return {
+        "target_date": target_date,
         "times": [times[i] for i in daytime_indices if i < len(times)],
         "temperature_c": temps,
         "precipitation_probability_pct": precip_probs,
@@ -109,7 +102,6 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
         "wind_speed_knots": wind_speeds,
         "wind_direction_deg": get_values("wind_direction_10m"),
         "wind_gusts_knots": wind_gusts,
-        # Summary stats
         "summary": {
             "avg_wind_knots": round(sum(wind_speeds) / len(wind_speeds), 1) if wind_speeds else 0,
             "max_wind_knots": round(max(wind_speeds), 1) if wind_speeds else 0,
