@@ -23,7 +23,7 @@ except ImportError:
 def get_wind_color(speed: float) -> str:
     """Get Windguru-style color for wind speed in knots"""
     if speed < 5:
-        return '#E8F5E9'    # Very light green (almost white)
+        return '#E8F5E9'    # Very light green
     elif speed < 10:
         return '#C8E6C9'    # Light green
     elif speed < 15:
@@ -47,35 +47,51 @@ def get_wind_color(speed: float) -> str:
 def get_wave_color(height: float) -> str:
     """Get color for wave height in meters"""
     if height < 0.3:
-        return '#E3F2FD'    # Very light blue
+        return '#E3F2FD'
     elif height < 0.5:
-        return '#BBDEFB'    # Light blue
+        return '#BBDEFB'
     elif height < 0.8:
-        return '#90CAF9'    # Blue
+        return '#90CAF9'
     elif height < 1.0:
-        return '#64B5F6'    # Medium blue
+        return '#64B5F6'
     elif height < 1.5:
-        return '#42A5F5'    # Darker blue
+        return '#42A5F5'
     elif height < 2.0:
-        return '#2196F3'    # Strong blue
+        return '#2196F3'
     else:
-        return '#1565C0'    # Dark blue
+        return '#1565C0'
 
 
 def get_temp_color(temp: float) -> str:
     """Get color for temperature"""
     if temp < 10:
-        return '#90CAF9'    # Cold - blue
+        return '#90CAF9'
     elif temp < 15:
-        return '#E1F5FE'    # Cool
+        return '#E1F5FE'
     elif temp < 20:
-        return '#FFF9C4'    # Mild - light yellow
+        return '#FFF9C4'
     elif temp < 25:
-        return '#FFEB3B'    # Warm - yellow
+        return '#FFEB3B'
     elif temp < 30:
-        return '#FF9800'    # Hot - orange
+        return '#FF9800'
     else:
-        return '#FF5722'    # Very hot - deep orange
+        return '#FF5722'
+
+
+def get_precip_color(precip: float) -> str:
+    """Get color for precipitation in mm"""
+    if precip < 0.1:
+        return '#FAFAFA'    # Almost white - no rain
+    elif precip < 1:
+        return '#E1F5FE'    # Very light blue
+    elif precip < 3:
+        return '#81D4FA'    # Light blue
+    elif precip < 5:
+        return '#29B6F6'    # Blue
+    elif precip < 10:
+        return '#0288D1'    # Dark blue
+    else:
+        return '#01579B'    # Very dark blue
 
 
 def get_direction_arrow(degrees: float) -> str:
@@ -85,9 +101,16 @@ def get_direction_arrow(degrees: float) -> str:
     return arrows[index]
 
 
+def get_direction_name(degrees: float) -> str:
+    """Get direction name"""
+    dirs = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB']
+    index = round(degrees / 45) % 8
+    return dirs[index]
+
+
 def create_windguru_table(weather_data: Dict[str, Any], marine_data: Dict[str, Any], target_date: str) -> bytes:
     """
-    Create a Windguru-style colored table
+    Create a Windguru-style colored table with EACH MODEL having its own complete section
     
     Args:
         weather_data: Weather data from multiple models
@@ -95,159 +118,142 @@ def create_windguru_table(weather_data: Dict[str, Any], marine_data: Dict[str, A
         target_date: Target date
     
     Returns:
-        PNG image as bytes
+        PNG image as bytes (tall vertical layout)
     """
     if not MATPLOTLIB_AVAILABLE:
         return None
     
     # Get hours from first valid model
     hours = []
-    first_model_data = None
+    valid_models = []
     for model_id, data in weather_data.items():
         if "times" in data and data["times"]:
-            hours = [t.split("T")[1][:5] for t in data["times"]]
-            first_model_data = data
-            break
+            if not hours:
+                hours = [t.split("T")[1][:5] for t in data["times"]]
+            valid_models.append((model_id, data))
     
-    if not hours or not first_model_data:
+    if not hours or not valid_models:
         return None
     
-    # Prepare data for table
     n_hours = len(hours)
-    n_models = len([m for m, d in weather_data.items() if "times" in d])
+    n_models = len(valid_models)
+    rows_per_model = 6  # Wind, Gust, Direction, Temp, Precip, Visibility
     
-    # Calculate figure size based on data
-    fig_width = max(12, n_hours * 0.8)
-    fig_height = 3 + n_models * 1.5
+    # Calculate figure size - tall vertical
+    fig_width = max(14, n_hours * 0.9)
+    fig_height = 2 + n_models * (rows_per_model * 0.5 + 1)
     
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-    ax.set_xlim(0, n_hours + 1)
-    ax.set_ylim(0, 6 + n_models)
+    ax.set_xlim(0, n_hours + 1.5)
+    total_rows = 2 + n_models * (rows_per_model + 1)
+    ax.set_ylim(0, total_rows)
     ax.axis('off')
-    fig.patch.set_facecolor('#2C3E50')
+    fig.patch.set_facecolor('#1a1a2e')
     
     # Title
-    ax.text(n_hours/2 + 0.5, 5.5 + n_models, f'HAVA DURUMU TAHMİNİ - {target_date}', 
-            fontsize=14, fontweight='bold', ha='center', va='center', color='white')
-    ax.text(n_hours/2 + 0.5, 5 + n_models, 'Kara Ada, Bodrum', 
-            fontsize=10, ha='center', va='center', color='#BDC3C7')
+    current_y = total_rows - 0.5
+    ax.text(n_hours/2 + 1, current_y, f'HAVA DURUMU TAHMİNİ - {target_date}', 
+            fontsize=16, fontweight='bold', ha='center', va='center', color='white')
+    current_y -= 0.6
+    ax.text(n_hours/2 + 1, current_y, 'Kara Ada, Bodrum | Saatlik Detaylı Tablo', 
+            fontsize=11, ha='center', va='center', color='#BDC3C7')
+    current_y -= 1
     
-    # Column headers (hours)
-    row_y = 4.5 + n_models
-    ax.add_patch(plt.Rectangle((0, row_y - 0.4), n_hours + 1, 0.8, facecolor='#34495E', edgecolor='#2C3E50'))
-    ax.text(0.5, row_y, 'SAAT', fontsize=8, fontweight='bold', ha='center', va='center', color='white')
-    for i, hour in enumerate(hours):
-        ax.text(i + 1.5, row_y, hour, fontsize=9, fontweight='bold', ha='center', va='center', color='white')
-    
-    current_row = 3.5 + n_models
-    
-    # === WIND SPEED ROWS FOR EACH MODEL ===
-    for model_id, data in weather_data.items():
-        if "wind_speed_knots" not in data or not data["wind_speed_knots"]:
-            continue
+    # Process each model
+    for model_id, data in valid_models:
+        model_name = get_model_display_name(model_id)
         
-        model_name = get_short_model_name(model_id)
+        # Model header
+        ax.add_patch(plt.Rectangle((0, current_y - 0.4), n_hours + 1.5, 0.8, 
+                                   facecolor='#3498DB', edgecolor='#2C3E50', linewidth=2))
+        ax.text(n_hours/2 + 0.75, current_y, f'{model_name}', 
+                fontsize=12, fontweight='bold', ha='center', va='center', color='white')
+        current_y -= 0.8
         
-        # Wind row header
-        ax.add_patch(plt.Rectangle((0, current_row - 0.4), 1, 0.8, facecolor='#3498DB', edgecolor='#2C3E50'))
-        ax.text(0.5, current_row, f'{model_name}\nknot', fontsize=7, fontweight='bold', 
-                ha='center', va='center', color='white')
+        # Hour header row
+        ax.add_patch(plt.Rectangle((0, current_y - 0.35), 1.5, 0.7, facecolor='#34495E', edgecolor='#2C3E50'))
+        ax.text(0.75, current_y, 'Saat', fontsize=8, fontweight='bold', ha='center', va='center', color='white')
+        for i, hour in enumerate(hours):
+            ax.add_patch(plt.Rectangle((i + 1.5, current_y - 0.35), 1, 0.7, facecolor='#34495E', edgecolor='#2C3E50'))
+            ax.text(i + 2, current_y, hour, fontsize=8, fontweight='bold', ha='center', va='center', color='white')
+        current_y -= 0.7
         
-        # Wind values with colors
-        winds = data["wind_speed_knots"][:n_hours]
-        for i, wind in enumerate(winds):
-            color = get_wind_color(wind)
-            text_color = 'black' if wind < 35 else 'white'
-            ax.add_patch(plt.Rectangle((i + 1, current_row - 0.4), 1, 0.8, 
-                                       facecolor=color, edgecolor='#2C3E50', linewidth=0.5))
-            ax.text(i + 1.5, current_row, f'{wind:.0f}', fontsize=9, fontweight='bold',
-                   ha='center', va='center', color=text_color)
+        # Row 1: Wind Speed
+        _draw_data_row(ax, current_y, 'Rüzgar\n(knot)', data.get('wind_speed_knots', []), 
+                      n_hours, '#27AE60', get_wind_color, '{:.0f}')
+        current_y -= 0.7
         
-        current_row -= 1
-    
-    # === GUST ROW (average of models) ===
-    all_gusts = []
-    for model_id, data in weather_data.items():
-        if "wind_gusts_knots" in data and data["wind_gusts_knots"]:
-            all_gusts.append(data["wind_gusts_knots"][:n_hours])
-    
-    if all_gusts:
-        avg_gusts = np.mean(all_gusts, axis=0)
-        ax.add_patch(plt.Rectangle((0, current_row - 0.4), 1, 0.8, facecolor='#E74C3C', edgecolor='#2C3E50'))
-        ax.text(0.5, current_row, 'HAMLE\nknot', fontsize=7, fontweight='bold', 
-                ha='center', va='center', color='white')
+        # Row 2: Wind Gusts  
+        _draw_data_row(ax, current_y, 'Hamle\n(knot)', data.get('wind_gusts_knots', []),
+                      n_hours, '#E74C3C', get_wind_color, '{:.0f}')
+        current_y -= 0.7
         
-        for i, gust in enumerate(avg_gusts):
-            color = get_wind_color(gust)
-            text_color = 'black' if gust < 35 else 'white'
-            ax.add_patch(plt.Rectangle((i + 1, current_row - 0.4), 1, 0.8, 
-                                       facecolor=color, edgecolor='#2C3E50', linewidth=0.5))
-            ax.text(i + 1.5, current_row, f'{gust:.0f}', fontsize=9, fontweight='bold',
-                   ha='center', va='center', color=text_color)
-        current_row -= 1
-    
-    # === WIND DIRECTION ROW ===
-    all_dirs = []
-    for model_id, data in weather_data.items():
-        if "wind_direction_deg" in data and data["wind_direction_deg"]:
-            all_dirs.append(data["wind_direction_deg"][:n_hours])
-    
-    if all_dirs:
-        avg_dirs = np.mean(all_dirs, axis=0)
-        ax.add_patch(plt.Rectangle((0, current_row - 0.4), 1, 0.8, facecolor='#9B59B6', edgecolor='#2C3E50'))
-        ax.text(0.5, current_row, 'YÖN', fontsize=7, fontweight='bold', 
-                ha='center', va='center', color='white')
+        # Row 3: Wind Direction
+        dirs = data.get('wind_direction_deg', [])
+        ax.add_patch(plt.Rectangle((0, current_y - 0.35), 1.5, 0.7, facecolor='#9B59B6', edgecolor='#2C3E50'))
+        ax.text(0.75, current_y, 'Yön', fontsize=8, fontweight='bold', ha='center', va='center', color='white')
+        for i in range(n_hours):
+            ax.add_patch(plt.Rectangle((i + 1.5, current_y - 0.35), 1, 0.7, facecolor='#ECF0F1', edgecolor='#2C3E50'))
+            if i < len(dirs) and dirs[i] is not None:
+                arrow = get_direction_arrow(dirs[i])
+                ax.text(i + 2, current_y, arrow, fontsize=14, ha='center', va='center', color='#2C3E50')
+        current_y -= 0.7
         
-        for i, dir_deg in enumerate(avg_dirs):
-            arrow = get_direction_arrow(dir_deg)
-            ax.add_patch(plt.Rectangle((i + 1, current_row - 0.4), 1, 0.8, 
-                                       facecolor='#ECF0F1', edgecolor='#2C3E50', linewidth=0.5))
-            ax.text(i + 1.5, current_row, arrow, fontsize=14, ha='center', va='center', color='#2C3E50')
-        current_row -= 1
+        # Row 4: Temperature
+        _draw_data_row(ax, current_y, 'Sıcaklık\n(°C)', data.get('temperature_c', []),
+                      n_hours, '#FF5722', get_temp_color, '{:.0f}')
+        current_y -= 0.7
+        
+        # Row 5: Precipitation
+        _draw_data_row(ax, current_y, 'Yağış\n(mm)', data.get('precipitation_mm', []),
+                      n_hours, '#0288D1', get_precip_color, '{:.1f}')
+        current_y -= 0.7
+        
+        # Row 6: Visibility
+        vis = data.get('visibility_m', [])
+        ax.add_patch(plt.Rectangle((0, current_y - 0.35), 1.5, 0.7, facecolor='#607D8B', edgecolor='#2C3E50'))
+        ax.text(0.75, current_y, 'Görüş\n(km)', fontsize=7, fontweight='bold', ha='center', va='center', color='white')
+        for i in range(n_hours):
+            ax.add_patch(plt.Rectangle((i + 1.5, current_y - 0.35), 1, 0.7, facecolor='#ECEFF1', edgecolor='#2C3E50'))
+            if i < len(vis) and vis[i] is not None:
+                vis_km = vis[i] / 1000
+                ax.text(i + 2, current_y, f'{vis_km:.0f}', fontsize=8, ha='center', va='center', color='#37474F')
+        current_y -= 1.2  # Extra space between models
     
-    # === WAVE ROW ===
+    # Marine data section
     if "wave_height_m" in marine_data and marine_data["wave_height_m"]:
-        waves = marine_data["wave_height_m"][:n_hours]
-        ax.add_patch(plt.Rectangle((0, current_row - 0.4), 1, 0.8, facecolor='#00BCD4', edgecolor='#2C3E50'))
-        ax.text(0.5, current_row, 'DALGA\nm', fontsize=7, fontweight='bold', 
-                ha='center', va='center', color='white')
+        ax.add_patch(plt.Rectangle((0, current_y - 0.4), n_hours + 1.5, 0.8, 
+                                   facecolor='#00BCD4', edgecolor='#2C3E50', linewidth=2))
+        ax.text(n_hours/2 + 0.75, current_y, 'DENIZ DURUMU', 
+                fontsize=12, fontweight='bold', ha='center', va='center', color='white')
+        current_y -= 0.8
         
-        for i, wave in enumerate(waves):
-            color = get_wave_color(wave)
-            ax.add_patch(plt.Rectangle((i + 1, current_row - 0.4), 1, 0.8, 
-                                       facecolor=color, edgecolor='#2C3E50', linewidth=0.5))
-            ax.text(i + 1.5, current_row, f'{wave:.1f}', fontsize=9, fontweight='bold',
-                   ha='center', va='center', color='#1565C0')
-        current_row -= 1
-    
-    # === TEMPERATURE ROW ===
-    all_temps = []
-    for model_id, data in weather_data.items():
-        if "temperature_c" in data and data["temperature_c"]:
-            all_temps.append(data["temperature_c"][:n_hours])
-    
-    if all_temps:
-        avg_temps = np.mean(all_temps, axis=0)
-        ax.add_patch(plt.Rectangle((0, current_row - 0.4), 1, 0.8, facecolor='#FF5722', edgecolor='#2C3E50'))
-        ax.text(0.5, current_row, 'SICAKLIK\n°C', fontsize=7, fontweight='bold', 
-                ha='center', va='center', color='white')
+        # Hour header
+        ax.add_patch(plt.Rectangle((0, current_y - 0.35), 1.5, 0.7, facecolor='#34495E', edgecolor='#2C3E50'))
+        ax.text(0.75, current_y, 'Saat', fontsize=8, fontweight='bold', ha='center', va='center', color='white')
+        marine_hours = marine_data.get('times', [])
+        for i in range(min(n_hours, len(marine_hours))):
+            hour = marine_hours[i].split("T")[1][:5] if i < len(marine_hours) else hours[i]
+            ax.add_patch(plt.Rectangle((i + 1.5, current_y - 0.35), 1, 0.7, facecolor='#34495E', edgecolor='#2C3E50'))
+            ax.text(i + 2, current_y, hour, fontsize=8, fontweight='bold', ha='center', va='center', color='white')
+        current_y -= 0.7
         
-        for i, temp in enumerate(avg_temps):
-            color = get_temp_color(temp)
-            ax.add_patch(plt.Rectangle((i + 1, current_row - 0.4), 1, 0.8, 
-                                       facecolor=color, edgecolor='#2C3E50', linewidth=0.5))
-            ax.text(i + 1.5, current_row, f'{temp:.0f}', fontsize=9, fontweight='bold',
-                   ha='center', va='center', color='#333333')
-        current_row -= 1
+        # Wave height
+        _draw_data_row(ax, current_y, 'Dalga\n(m)', marine_data.get('wave_height_m', []),
+                      n_hours, '#00BCD4', get_wave_color, '{:.1f}', text_color='#0D47A1')
+        current_y -= 0.7
+        
+        # Swell height
+        _draw_data_row(ax, current_y, 'Swell\n(m)', marine_data.get('swell_wave_height_m', []),
+                      n_hours, '#7C4DFF', get_wave_color, '{:.1f}', text_color='#311B92')
     
-    # Adjust limits
-    ax.set_ylim(current_row - 0.5, 6 + n_models)
+    ax.set_ylim(current_y - 1, total_rows)
     
     plt.tight_layout()
     
     # Save to bytes
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=120, facecolor='#2C3E50', edgecolor='none', bbox_inches='tight')
+    plt.savefig(buf, format='png', dpi=100, facecolor='#1a1a2e', edgecolor='none', bbox_inches='tight')
     buf.seek(0)
     table_bytes = buf.getvalue()
     plt.close()
@@ -255,27 +261,33 @@ def create_windguru_table(weather_data: Dict[str, Any], marine_data: Dict[str, A
     return table_bytes
 
 
+def _draw_data_row(ax, y: float, label: str, values: list, n_hours: int, 
+                  header_color: str, color_func, fmt: str, text_color: str = None):
+    """Helper function to draw a data row"""
+    ax.add_patch(plt.Rectangle((0, y - 0.35), 1.5, 0.7, facecolor=header_color, edgecolor='#2C3E50'))
+    ax.text(0.75, y, label, fontsize=7, fontweight='bold', ha='center', va='center', color='white')
+    
+    for i in range(n_hours):
+        if i < len(values) and values[i] is not None:
+            val = values[i]
+            color = color_func(val)
+            txt_color = text_color if text_color else ('white' if val > 35 else '#333333')
+            ax.add_patch(plt.Rectangle((i + 1.5, y - 0.35), 1, 0.7, facecolor=color, edgecolor='#2C3E50', linewidth=0.5))
+            ax.text(i + 2, y, fmt.format(val), fontsize=8, fontweight='bold', ha='center', va='center', color=txt_color)
+        else:
+            ax.add_patch(plt.Rectangle((i + 1.5, y - 0.35), 1, 0.7, facecolor='#BDBDBD', edgecolor='#2C3E50', linewidth=0.5))
+            ax.text(i + 2, y, '-', fontsize=8, ha='center', va='center', color='#757575')
+
+
 def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, Any], target_date: str) -> bytes:
-    """
-    Create a Windguru-style weather chart
-    
-    Args:
-        weather_data: Weather data from multiple models
-        marine_data: Marine/wave data
-        target_date: Target date
-    
-    Returns:
-        PNG image as bytes
-    """
+    """Create a Windguru-style weather chart"""
     if not MATPLOTLIB_AVAILABLE:
         return None
     
-    # Set up the figure with dark theme like Windguru
     plt.style.use('dark_background')
     fig, axes = plt.subplots(4, 1, figsize=(14, 10), gridspec_kw={'height_ratios': [2, 1.5, 1, 1]})
     fig.patch.set_facecolor('#1a1a2e')
     
-    # Get hours from first valid model
     hours = []
     for model_id, data in weather_data.items():
         if "times" in data and data["times"]:
@@ -288,15 +300,14 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     
     x = np.arange(len(hours))
     
-    # Color scheme
     colors = {
-        'ecmwf_ifs': '#e74c3c',      # Red
-        'icon_eu': '#3498db',         # Blue
-        'meteofrance_seamless': '#2ecc71',  # Green
-        'gfs_seamless': '#f39c12'     # Orange
+        'ecmwf_ifs': '#e74c3c',
+        'icon_eu': '#3498db',
+        'meteofrance_seamless': '#2ecc71',
+        'gfs_seamless': '#f39c12'
     }
     
-    # === Panel 1: Wind Speed ===
+    # Panel 1: Wind Speed
     ax1 = axes[0]
     ax1.set_facecolor('#16213e')
     
@@ -304,10 +315,9 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
         if "wind_speed_knots" in data and data["wind_speed_knots"]:
             wind = data["wind_speed_knots"][:len(hours)]
             color = colors.get(model_id, '#ffffff')
-            label = get_short_model_name(model_id)
+            label = get_model_display_name(model_id)
             ax1.plot(x[:len(wind)], wind, 'o-', color=color, linewidth=2, markersize=6, label=label)
             
-            # Add gust line as dashed
             if "wind_gusts_knots" in data and data["wind_gusts_knots"]:
                 gusts = data["wind_gusts_knots"][:len(hours)]
                 ax1.plot(x[:len(gusts)], gusts, '--', color=color, alpha=0.5, linewidth=1)
@@ -319,13 +329,11 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     ax1.set_xlim(-0.5, len(hours)-0.5)
     ax1.set_xticks(x)
     ax1.set_xticklabels([])
-    
-    # Add wind threshold lines
     ax1.axhline(y=15, color='yellow', linestyle=':', alpha=0.5, linewidth=1)
     ax1.axhline(y=20, color='orange', linestyle=':', alpha=0.5, linewidth=1)
     ax1.axhline(y=25, color='red', linestyle=':', alpha=0.5, linewidth=1)
     
-    # === Panel 2: Wind Direction ===
+    # Panel 2: Wind Direction
     ax2 = axes[1]
     ax2.set_facecolor('#16213e')
     
@@ -344,7 +352,7 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     ax2.set_xticks(x)
     ax2.set_xticklabels([])
     
-    # === Panel 3: Wave Height ===
+    # Panel 3: Wave Height
     ax3 = axes[2]
     ax3.set_facecolor('#16213e')
     
@@ -363,7 +371,7 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     ax3.set_xticks(x)
     ax3.set_xticklabels([])
     
-    # === Panel 4: Temperature ===
+    # Panel 4: Temperature
     ax4 = axes[3]
     ax4.set_facecolor('#16213e')
     
@@ -380,10 +388,8 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     ax4.set_xticks(x)
     ax4.set_xticklabels(hours, rotation=45, ha='right')
     
-    # Adjust layout
     plt.tight_layout()
     
-    # Save to bytes
     buf = io.BytesIO()
     plt.savefig(buf, format='png', dpi=120, facecolor='#1a1a2e', edgecolor='none', bbox_inches='tight')
     buf.seek(0)
@@ -391,6 +397,17 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     plt.close()
     
     return chart_bytes
+
+
+def get_model_display_name(model_id: str) -> str:
+    """Get display name for model"""
+    names = {
+        'ecmwf_ifs': 'ECMWF IFS',
+        'icon_eu': 'ICON-EU',
+        'meteofrance_seamless': 'Météo-France',
+        'gfs_seamless': 'GFS (NOAA)'
+    }
+    return names.get(model_id, model_id)
 
 
 def get_short_model_name(model_id: str) -> str:
