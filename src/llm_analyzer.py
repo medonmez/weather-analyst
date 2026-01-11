@@ -24,7 +24,7 @@ def analyze_weather(
         marine_data: Marine/wave data
         station_data: Real-time station data
         api_key: OpenRouter API key
-        model: Model name (e.g., google/gemini-2.0-flash-001)
+        model: Model name
         system_prompt: System prompt for analysis
         location_name: Name of location
     
@@ -32,7 +32,7 @@ def analyze_weather(
         LLM-generated analysis text
     """
     if not api_key:
-        return "❌ OpenRouter API key not configured"
+        return "HATA: OpenRouter API key not configured"
     
     # Build the data prompt
     user_prompt = build_data_prompt(weather_data, marine_data, station_data, location_name)
@@ -50,13 +50,13 @@ def analyze_weather(
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.3,
-            max_tokens=2000
+            max_tokens=4000
         )
         
         return response.choices[0].message.content
         
     except Exception as e:
-        return f"❌ LLM API Error: {str(e)}"
+        return f"HATA: LLM API Error: {str(e)}"
 
 
 def build_data_prompt(
@@ -65,92 +65,110 @@ def build_data_prompt(
     station_data: Dict[str, Any],
     location_name: str
 ) -> str:
-    """Build the user prompt with all weather data"""
+    """Build the user prompt with hourly weather data tables"""
     
     now = datetime.now()
     date_str = now.strftime("%d %B %Y")
-    time_of_day = "Sabah" if now.hour < 12 else "Akşam"
+    time_of_day = "Sabah" if now.hour < 12 else "Aksam"
     
-    prompt = f"""# Hava Durumu Analizi Talebi
+    prompt = f"""# Meteoroloji Analiz Talebi
 
-**Konum:** {location_name}
-**Tarih:** {date_str}
-**Rapor Tipi:** {time_of_day} Raporu
-**Analiz Saatleri:** 08:00 - 18:00
+Konum: {location_name}
+Tarih: {date_str}
+Rapor Tipi: {time_of_day} Raporu
+Analiz Saatleri: 08:00 - 18:00
 
 ---
 
-## 📊 HAVA TAHMİN MODELLERİ
+## HAVA TAHMIN MODELLERI - SAATLIK VERILER
 
 """
     
-    # Add weather model data
+    # Add hourly weather data for each model
     for model_id, data in weather_data.items():
         if "error" in data:
-            prompt += f"### {model_id}\n❌ Veri alınamadı: {data['error']}\n\n"
+            prompt += f"### {model_id}\nVeri alinamadi: {data['error']}\n\n"
             continue
         
-        summary = data.get("summary", {})
         from src.open_meteo_weather import get_model_display_name
         model_name = get_model_display_name(model_id)
         
-        prompt += f"""### {model_name}
-| Parametre | Değer |
-|-----------|-------|
-| Ortalama Rüzgar | {summary.get('avg_wind_knots', 'N/A')} knot |
-| Maksimum Rüzgar | {summary.get('max_wind_knots', 'N/A')} knot |
-| Maksimum Hamle | {summary.get('max_gust_knots', 'N/A')} knot |
-| Ortalama Sıcaklık | {summary.get('avg_temp', 'N/A')}°C |
-| Maks Yağış Olasılığı | %{summary.get('max_precip_prob', 'N/A')} |
-
-"""
+        times = data.get("times", [])
+        wind_speeds = data.get("wind_speed_knots", [])
+        wind_gusts = data.get("wind_gusts_knots", [])
+        wind_dirs = data.get("wind_direction", [])
+        temps = data.get("temperature", [])
+        
+        prompt += f"### {model_name}\n"
+        prompt += "| Saat | Ruzgar (knot) | Hamle (knot) | Yon | Sicaklik |\n"
+        prompt += "|------|---------------|--------------|-----|----------|\n"
+        
+        for i in range(min(len(times), 11)):
+            hour = times[i].split("T")[1][:5] if i < len(times) else "-"
+            wind = f"{wind_speeds[i]:.1f}" if i < len(wind_speeds) else "-"
+            gust = f"{wind_gusts[i]:.1f}" if i < len(wind_gusts) else "-"
+            direction = f"{wind_dirs[i]:.0f}" if i < len(wind_dirs) else "-"
+            temp = f"{temps[i]:.1f}" if i < len(temps) else "-"
+            prompt += f"| {hour} | {wind} | {gust} | {direction} | {temp} |\n"
+        
+        # Add summary
+        summary = data.get("summary", {})
+        prompt += f"\nOzet: Ort. {summary.get('avg_wind_knots', 'N/A')} knot, "
+        prompt += f"Maks. {summary.get('max_wind_knots', 'N/A')} knot, "
+        prompt += f"Hamle Maks. {summary.get('max_gust_knots', 'N/A')} knot\n\n"
     
-    # Add marine data
-    prompt += "---\n\n## 🌊 DENİZ DURUMU\n\n"
+    # Add marine data with hourly details
+    prompt += "---\n\n## DENIZ DURUMU - SAATLIK VERILER\n\n"
     
     if "error" in marine_data:
-        prompt += f"❌ Veri alınamadı: {marine_data['error']}\n\n"
+        prompt += f"Veri alinamadi: {marine_data['error']}\n\n"
     else:
+        times = marine_data.get("times", [])
+        wave_heights = marine_data.get("wave_height", [])
+        swell_heights = marine_data.get("swell_wave_height", [])
+        swell_periods = marine_data.get("swell_wave_period", [])
+        
+        prompt += "| Saat | Dalga (m) | Swell (m) | Periyot (s) |\n"
+        prompt += "|------|-----------|-----------|-------------|\n"
+        
+        for i in range(min(len(times), 11)):
+            hour = times[i].split("T")[1][:5] if i < len(times) else "-"
+            wave = f"{wave_heights[i]:.2f}" if i < len(wave_heights) and wave_heights[i] else "-"
+            swell = f"{swell_heights[i]:.2f}" if i < len(swell_heights) and swell_heights[i] else "-"
+            period = f"{swell_periods[i]:.1f}" if i < len(swell_periods) and swell_periods[i] else "-"
+            prompt += f"| {hour} | {wave} | {swell} | {period} |\n"
+        
         marine_summary = marine_data.get("summary", {})
-        prompt += f"""| Parametre | Değer |
-|-----------|-------|
-| Ortalama Dalga | {marine_summary.get('avg_wave_height', 'N/A')} m |
-| Maksimum Dalga | {marine_summary.get('max_wave_height', 'N/A')} m |
-| Ortalama Swell | {marine_summary.get('avg_swell_height', 'N/A')} m |
-| Maksimum Swell | {marine_summary.get('max_swell_height', 'N/A')} m |
-| Swell Periyodu | {marine_summary.get('avg_swell_period', 'N/A')} s |
-| Swell Yönü | {marine_summary.get('primary_swell_direction', 'N/A')} |
-
-"""
+        prompt += f"\nOzet: Dalga Ort. {marine_summary.get('avg_wave_height', 'N/A')}m, "
+        prompt += f"Maks. {marine_summary.get('max_wave_height', 'N/A')}m | "
+        prompt += f"Swell Ort. {marine_summary.get('avg_swell_height', 'N/A')}m, "
+        prompt += f"Yon: {marine_summary.get('primary_swell_direction', 'N/A')}\n\n"
     
     # Add station data
-    prompt += "---\n\n## 📡 GERÇEK ZAMANLI İSTASYON VERİSİ\n\n"
+    prompt += "---\n\n## GERCEK ZAMANLI ISTASYON VERISI\n\n"
     
     if not station_data.get("available"):
-        prompt += f"ℹ️ {station_data.get('message', 'İstasyon verisi mevcut değil')}\n\n"
+        prompt += f"Not: {station_data.get('message', 'Istasyon verisi mevcut degil')}\n\n"
     else:
         measurements = station_data.get("measurements", {})
-        prompt += f"""**İstasyon:** {station_data.get('station_name', 'Unknown')} ({station_data.get('distance_km', '?')} km uzaklıkta)
-
-| Parametre | Güncel Değer |
-|-----------|--------------|
-| Rüzgar | {measurements.get('wind_knots', 'N/A')} knot |
-| Hamle | {measurements.get('gust_knots', 'N/A')} knot |
-| Rüzgar Yönü | {measurements.get('wind_direction', 'N/A')}° |
-| Sıcaklık | {measurements.get('temperature_c', 'N/A')}°C |
-| Basınç | {measurements.get('pressure_hpa', 'N/A')} hPa |
-
-"""
+        prompt += f"Istasyon: {station_data.get('station_name', 'Unknown')} ({station_data.get('distance_km', '?')} km uzaklikta)\n\n"
+        prompt += "| Parametre | Guncel Deger |\n"
+        prompt += "|-----------|---------------|\n"
+        prompt += f"| Ruzgar | {measurements.get('wind_knots', 'N/A')} knot |\n"
+        prompt += f"| Hamle | {measurements.get('gust_knots', 'N/A')} knot |\n"
+        prompt += f"| Ruzgar Yonu | {measurements.get('wind_direction', 'N/A')} |\n"
+        prompt += f"| Sicaklik | {measurements.get('temperature_c', 'N/A')} C |\n"
+        prompt += f"| Basinc | {measurements.get('pressure_hpa', 'N/A')} hPa |\n\n"
     
     prompt += """---
 
-## 📝 ANALİZ TALEBİ
+## ANALIZ TALEBI
 
-Lütfen yukarıdaki verileri analiz et ve:
-1. Her modelin tahminlerini karşılaştır
-2. Deniz durumunu değerlendir
-3. Varsa gerçek zamanlı veriyi tahminlerle karşılaştır
-4. Dalış kulübünün bugün tekneyle açılıp açılmaması konusunda net bir karar ver
+Yukaridaki saatlik verileri analiz ederek:
+1. Modellerin tutarliligini degerlendir
+2. Kritik saat dilimlerini belirle
+3. Deniz durumu ile ruzgar iliskisini analiz et
+4. Tekne operasyonu icin net bir karar ver
 """
     
     return prompt

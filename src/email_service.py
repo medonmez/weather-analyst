@@ -1,10 +1,12 @@
 """
 Email Service using Resend API
-Sends weather reports via email
+Sends weather reports via email with JSON data attachment
 """
 import resend
+import json
+import base64
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 def send_report_email(
@@ -13,10 +15,11 @@ def send_report_email(
     from_email: str,
     location_name: str,
     analysis: str,
+    raw_data: Optional[Dict[str, Any]] = None,
     subject: Optional[str] = None
 ) -> dict:
     """
-    Send weather analysis report via Resend
+    Send weather analysis report via Resend with JSON attachment
     
     Args:
         api_key: Resend API key
@@ -24,6 +27,7 @@ def send_report_email(
         from_email: Sender email
         location_name: Location name for subject
         analysis: LLM analysis text
+        raw_data: Raw weather data to attach as JSON
         subject: Optional custom subject
     
     Returns:
@@ -36,20 +40,38 @@ def send_report_email(
     
     now = datetime.now()
     date_str = now.strftime("%d %B %Y")
-    time_of_day = "Sabah" if now.hour < 12 else "Akşam"
+    time_of_day = "Sabah" if now.hour < 12 else "Aksam"
     
     if not subject:
-        subject = f"🌊 {location_name} Dalış Raporu - {date_str} {time_of_day}"
+        subject = f"{location_name} Dalis Raporu - {date_str} {time_of_day}"
     
     html_content = generate_html_email(analysis, location_name, date_str, time_of_day)
     
+    # Prepare email payload
+    email_payload = {
+        "from": from_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content
+    }
+    
+    # Add JSON attachment if raw_data provided
+    if raw_data:
+        json_str = json.dumps(raw_data, indent=2, ensure_ascii=False, default=str)
+        json_bytes = json_str.encode('utf-8')
+        json_base64 = base64.b64encode(json_bytes).decode('utf-8')
+        
+        filename = f"weather_data_{now.strftime('%Y%m%d_%H%M')}.json"
+        
+        email_payload["attachments"] = [
+            {
+                "filename": filename,
+                "content": json_base64
+            }
+        ]
+    
     try:
-        response = resend.Emails.send({
-            "from": from_email,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content
-        })
+        response = resend.Emails.send(email_payload)
         return {"success": True, "id": response.get("id")}
         
     except Exception as e:
@@ -57,7 +79,7 @@ def send_report_email(
 
 
 def generate_html_email(analysis: str, location: str, date: str, time_of_day: str) -> str:
-    """Generate HTML email from markdown analysis"""
+    """Generate professional HTML email from markdown analysis"""
     
     # Convert markdown to basic HTML
     html_analysis = markdown_to_html(analysis)
@@ -69,103 +91,123 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             line-height: 1.6;
-            color: #333;
-            max-width: 600px;
+            color: #1a1a1a;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: #f8f9fa;
         }}
         .container {{
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            border: 1px solid #e1e5e9;
         }}
         .header {{
-            text-align: center;
-            border-bottom: 2px solid #0066cc;
-            padding-bottom: 20px;
-            margin-bottom: 25px;
+            border-bottom: 2px solid #1a365d;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
         }}
         .header h1 {{
-            color: #0066cc;
+            color: #1a365d;
             margin: 0;
-            font-size: 24px;
+            font-size: 22px;
+            font-weight: 600;
         }}
         .header .subtitle {{
-            color: #666;
+            color: #4a5568;
             font-size: 14px;
-            margin-top: 5px;
+            margin-top: 4px;
         }}
         .content {{
-            font-size: 15px;
+            font-size: 14px;
         }}
         table {{
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 16px 0;
+            font-size: 13px;
         }}
         th, td {{
-            padding: 10px;
+            padding: 8px 12px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border: 1px solid #e2e8f0;
         }}
         th {{
-            background: #f8f9fa;
+            background: #f7fafc;
             font-weight: 600;
+            color: #2d3748;
+        }}
+        tr:nth-child(even) {{
+            background: #f7fafc;
+        }}
+        h2 {{
+            color: #1a365d;
+            font-size: 16px;
+            margin-top: 28px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }}
+        h3 {{
+            color: #2d3748;
+            font-size: 14px;
+            margin-top: 20px;
+            margin-bottom: 8px;
         }}
         .decision {{
-            text-align: center;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 16px;
+            margin: 24px 0;
+            border-radius: 6px;
+            font-weight: 600;
         }}
-        .safe {{
-            background: #d4edda;
-            color: #155724;
+        .decision-uygun {{
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #38a169;
         }}
-        .caution {{
-            background: #fff3cd;
-            color: #856404;
+        .decision-sinirli {{
+            background: #fefcbf;
+            color: #744210;
+            border-left: 4px solid #d69e2e;
         }}
-        .risky {{
-            background: #ffe0b2;
-            color: #e65100;
-        }}
-        .danger {{
-            background: #f8d7da;
-            color: #721c24;
-        }}
-        h2, h3 {{
-            color: #0066cc;
-            margin-top: 25px;
+        .decision-degil {{
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #e53e3e;
         }}
         .footer {{
             text-align: center;
-            font-size: 12px;
-            color: #999;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
+            font-size: 11px;
+            color: #718096;
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }}
+        strong {{
+            font-weight: 600;
+        }}
+        p {{
+            margin: 8px 0;
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌊 {location} Dalış Raporu</h1>
-            <div class="subtitle">{date} - {time_of_day} Analizi</div>
+            <h1>{location} - Meteoroloji Raporu</h1>
+            <div class="subtitle">{date} | {time_of_day} Analizi</div>
         </div>
         <div class="content">
             {html_analysis}
         </div>
         <div class="footer">
-            Bu rapor otomatik olarak oluşturulmuştur.<br>
-            Veriler: Open-Meteo, Windy Stations | Analiz: Gemini AI
+            Bu rapor otomatik olarak olusturulmustur.<br>
+            Veri Kaynaklari: Open-Meteo (ECMWF, ICON, GFS, ARPEGE), Windy Stations<br>
+            Analiz: Google Gemini AI | JSON verisi ekte mevcuttur.
         </div>
     </div>
 </body>
@@ -173,7 +215,7 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
 
 
 def markdown_to_html(md: str) -> str:
-    """Simple markdown to HTML converter"""
+    """Convert markdown to HTML"""
     import re
     
     html = md
@@ -186,7 +228,7 @@ def markdown_to_html(md: str) -> str:
     # Bold
     html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
     
-    # Tables - basic conversion
+    # Tables
     lines = html.split('\n')
     in_table = False
     result_lines = []

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Weather Analyst - Main Orchestrator
-Dalış Kulübü için hava durumu analiz sistemi
+Dalis Kulubu icin hava durumu analiz sistemi
 """
 import sys
 import argparse
@@ -28,12 +28,12 @@ def main(test_mode: bool = False, no_email: bool = False):
         test_mode: If True, print output instead of sending email
         no_email: If True, skip email sending
     """
-    print(f"🌊 Weather Analyst - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    print(f"📍 Location: {LOCATION['name']}")
+    print(f"Weather Analyst - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Location: {LOCATION['name']}")
     print("-" * 50)
     
     # 1. Fetch weather data from multiple models
-    print("📊 Fetching weather forecasts...")
+    print("Fetching weather forecasts...")
     weather_data = fetch_weather_data(
         lat=LOCATION["lat"],
         lon=LOCATION["lon"],
@@ -42,26 +42,26 @@ def main(test_mode: bool = False, no_email: bool = False):
     
     for model, data in weather_data.items():
         if "error" in data:
-            print(f"  ❌ {model}: {data['error']}")
+            print(f"  [ERROR] {model}: {data['error']}")
         else:
             summary = data.get("summary", {})
-            print(f"  ✅ {model}: {summary.get('avg_wind_knots', '?')} knot avg")
+            print(f"  [OK] {model}: {summary.get('avg_wind_knots', '?')} knot avg, max {summary.get('max_wind_knots', '?')} knot")
     
     # 2. Fetch marine data
-    print("\n🌊 Fetching marine data...")
+    print("\nFetching marine data...")
     marine_data = fetch_marine_data(
         lat=LOCATION["lat"],
         lon=LOCATION["lon"]
     )
     
     if "error" in marine_data:
-        print(f"  ❌ Marine: {marine_data['error']}")
+        print(f"  [ERROR] Marine: {marine_data['error']}")
     else:
         summary = marine_data.get("summary", {})
-        print(f"  ✅ Waves: {summary.get('avg_wave_height', '?')}m avg, {summary.get('max_wave_height', '?')}m max")
+        print(f"  [OK] Waves: {summary.get('avg_wave_height', '?')}m avg, {summary.get('max_wave_height', '?')}m max")
     
     # 3. Fetch real-time station data
-    print("\n📡 Fetching station data...")
+    print("\nFetching station data...")
     station_data = fetch_station_data(
         api_key=WINDY_API_KEY,
         lat=LOCATION["lat"],
@@ -69,12 +69,12 @@ def main(test_mode: bool = False, no_email: bool = False):
     )
     
     if station_data.get("available"):
-        print(f"  ✅ Station: {station_data.get('station_name')}")
+        print(f"  [OK] Station: {station_data.get('station_name')}")
     else:
-        print(f"  ℹ️  {station_data.get('message', 'No station data')}")
+        print(f"  [INFO] {station_data.get('message', 'No station data')}")
     
     # 4. Analyze with LLM
-    print("\n🤖 Analyzing with LLM...")
+    print("\nAnalyzing with LLM...")
     analysis = analyze_weather(
         weather_data=weather_data,
         marine_data=marine_data,
@@ -85,40 +85,50 @@ def main(test_mode: bool = False, no_email: bool = False):
         location_name=LOCATION["name"]
     )
     
-    if analysis.startswith("❌"):
+    if analysis.startswith("HATA"):
         print(f"  {analysis}")
     else:
-        print("  ✅ Analysis complete")
+        print("  [OK] Analysis complete")
+    
+    # Prepare raw data for JSON attachment
+    raw_data = {
+        "generated_at": datetime.now().isoformat(),
+        "location": LOCATION,
+        "weather_models": weather_data,
+        "marine_data": marine_data,
+        "station_data": station_data
+    }
     
     # 5. Send email or print
     if test_mode or no_email:
         print("\n" + "=" * 50)
-        print("📧 REPORT PREVIEW:")
+        print("REPORT PREVIEW:")
         print("=" * 50)
         print(analysis)
         print("=" * 50)
         
         if no_email:
-            print("\n⏭️  Email sending skipped (--no-email)")
+            print("\nEmail sending skipped (--no-email)")
         else:
-            print("\n⏭️  Test mode - email not sent")
+            print("\nTest mode - email not sent")
     else:
-        print("\n📧 Sending email...")
+        print("\nSending email...")
         result = send_report_email(
             api_key=RESEND_API_KEY,
             to_email=EMAIL_TO,
             from_email=EMAIL_FROM,
             location_name=LOCATION["name"],
-            analysis=analysis
+            analysis=analysis,
+            raw_data=raw_data  # JSON attachment
         )
         
         if result.get("success"):
-            print(f"  ✅ Email sent! ID: {result.get('id')}")
+            print(f"  [OK] Email sent! ID: {result.get('id')}")
         else:
-            print(f"  ❌ Email failed: {result.get('error')}")
+            print(f"  [ERROR] Email failed: {result.get('error')}")
             sys.exit(1)
     
-    print("\n✨ Done!")
+    print("\nDone!")
 
 
 if __name__ == "__main__":

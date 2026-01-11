@@ -90,13 +90,15 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
                 if len(daytime_indices) >= 11:
                     break
     
-    # Extract values for daytime
+    # Extract values for daytime, filtering out None values
     def get_values(key):
         values = hourly.get(key, [])
-        return [values[i] for i in daytime_indices if i < len(values)]
+        return [values[i] for i in daytime_indices if i < len(values) and values[i] is not None]
     
     wind_speeds_ms = get_values("wind_speed_10m")
     wind_gusts_ms = get_values("wind_gusts_10m")
+    temps = get_values("temperature_2m")
+    precip_probs = get_values("precipitation_probability")
     
     # Convert to knots
     wind_speeds_knots = [v * MS_TO_KNOTS if v else 0 for v in wind_speeds_ms]
@@ -104,9 +106,9 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
     
     return {
         "times": [times[i] for i in daytime_indices if i < len(times)],
-        "temperature": get_values("temperature_2m"),
+        "temperature": temps,
         "humidity": get_values("relative_humidity_2m"),
-        "precipitation_probability": get_values("precipitation_probability"),
+        "precipitation_probability": precip_probs,
         "precipitation": get_values("precipitation"),
         "weather_code": get_values("weather_code"),
         "visibility": get_values("visibility"),
@@ -118,8 +120,8 @@ def process_weather_data(data: Dict) -> Dict[str, Any]:
             "avg_wind_knots": round(sum(wind_speeds_knots) / len(wind_speeds_knots), 1) if wind_speeds_knots else 0,
             "max_wind_knots": round(max(wind_speeds_knots), 1) if wind_speeds_knots else 0,
             "max_gust_knots": round(max(wind_gusts_knots), 1) if wind_gusts_knots else 0,
-            "avg_temp": round(sum(get_values("temperature_2m")) / len(get_values("temperature_2m")), 1) if get_values("temperature_2m") else 0,
-            "max_precip_prob": max(get_values("precipitation_probability")) if get_values("precipitation_probability") else 0
+            "avg_temp": round(sum(temps) / len(temps), 1) if temps else 0,
+            "max_precip_prob": max(precip_probs) if precip_probs else 0
         }
     }
 
@@ -130,7 +132,8 @@ def get_model_display_name(model_id: str) -> str:
         "icon_seamless": "ICON (DWD)",
         "gfs_seamless": "GFS (NOAA)",
         "ecmwf_ifs025": "ECMWF IFS",
-        "arpege_seamless": "ARPEGE (Météo-France)",
+        "ecmwf_aifs025": "ECMWF AIFS",
+        "arpege_seamless": "ARPEGE (Meteo-France)",
         "gem_seamless": "GEM (Canada)"
     }
     return names.get(model_id, model_id)

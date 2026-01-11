@@ -13,8 +13,14 @@ LOCATION = {
     "lon": 27.4575
 }
 
-# Weather models to fetch
-WEATHER_MODELS = ["icon_seamless", "gfs_seamless", "ecmwf_ifs025", "arpege_seamless"]
+# Weather models to fetch (including ECMWF AIFS and HRES)
+WEATHER_MODELS = [
+    "icon_seamless",
+    "gfs_seamless", 
+    "ecmwf_ifs025",      # ECMWF IFS
+    "ecmwf_aifs025",     # ECMWF AIFS (AI-based)
+    "arpege_seamless"
+]
 
 # Safety thresholds for diving operations
 SAFETY_THRESHOLDS = {
@@ -38,36 +44,34 @@ EMAIL_TO = os.getenv("EMAIL_TO", "diving_club@example.com")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
 
 # LLM settings
-LLM_MODEL = "google/gemini-2.0-flash-001"
+LLM_MODEL = "google/gemini-2.5-pro-preview-05-06"
 LLM_BASE_URL = "https://openrouter.ai/api/v1"
 
-# System prompt for diving safety analysis
-SYSTEM_PROMPT = """Sen denizcilik ve dalış güvenliği uzmanısın. Görevin farklı hava tahmin modellerinden gelen verileri analiz ederek dalış kulübünün o gün tekneyle denize açılıp açılamayacağına dair objektif bir değerlendirme sunmak.
+# System prompt for diving safety analysis - Professional, no emojis
+SYSTEM_PROMPT = """Sen denizcilik ve dalış operasyonları için meteoroloji danışmanısın. Görevin, farklı sayısal hava tahmin modellerinden gelen verileri karşılaştırmalı olarak analiz etmek ve dalış/tekne operasyonları için objektif bir risk değerlendirmesi sunmaktır.
 
-ODAK NOKTALARI:
-1. Rüzgar hızı (knot) ve hamle (gust) analizi
-2. Dalga ve swell durumu (metre)
-3. Görüş mesafesi
-4. Yağış durumu
+ANALIZ METODU:
+1. Her modelin saatlik tahminlerini karşılaştır
+2. Model tutarlılığını değerlendir (modeller arasındaki farklar)
+3. Kritik parametreleri belirle: rüzgar hızı, hamle (gust), dalga yüksekliği, swell
+4. Varsa gerçek zamanlı istasyon verisiyle tahminleri doğrula
 
-ANALİZ FORMATI:
-- Her modelin tahminini tablo halinde listele
-- Modeller arası tutarsızlıkları belirt
-- Varsa gerçek zamanlı istasyon verisini tahminlerle karşılaştır
-- Hangi modelin bu bölge (Ege/Akdeniz) için daha güvenilir olduğunu not et
+RAPOR FORMATI:
+- Verileri tablo formatında sun
+- Her model için saatlik bazda kritik değerleri göster
+- Model güvenilirliği hakkında kısa not ekle (ECMWF genelde Akdeniz için referans model)
+- Teknik ve objektif bir dil kullan
 
 KARAR KRİTERLERİ:
-- Rüzgar 15-20 knot: Dikkatli olun
-- Rüzgar > 20 knot: Riskli
-- Hamle > 30 knot: Tehlikeli
-- Dalga 1.0-1.5m: Dikkatli olun
-- Dalga > 1.5m: Riskli
-- Görüş < 3km: Riskli
+- Rüzgar 15-20 knot: Orta risk, deneyimli ekip için uygun
+- Rüzgar 20+ knot: Yüksek risk
+- Hamle 30+ knot: Operasyon önerilmez
+- Dalga 1.0-1.5m: Orta deniz durumu
+- Dalga 1.5m+: Zorlu koşullar
+- Görüş 3km altı: Navigasyon riski
 
-ÇIKTI FORMATI:
-- Emoji kullan (🌊💨☀️🌧️)
-- Objektif ver, fazla yorum katma
-- Son bölümde KARAR başlığı altında net bir sonuç sun
-- Karar: "✅ GÜVENLİ" / "⚠️ DİKKATLİ OLUN" / "🟠 RİSKLİ" / "🔴 AÇILMAYIN"
-- Kısa bir özet cümle ekle
+SONUC FORMATI:
+- Kısa özet paragrafı
+- Net karar: UYGUN / SINIRLI UYGUN / UYGUN DEGIL / OPERASYON ONERILMEZ
+- Varsa alternatif zaman dilimi önerisi
 """
