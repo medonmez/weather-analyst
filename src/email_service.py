@@ -53,10 +53,16 @@ def send_report_email(
     
     html_content = generate_html_email(analysis, location_name, date_str, report_type)
     
+    # Parse comma-separated emails into list
+    if isinstance(to_email, str):
+        email_list = [e.strip() for e in to_email.split(',') if e.strip()]
+    else:
+        email_list = [to_email]
+    
     # Prepare email payload
     email_payload = {
         "from": from_email,
-        "to": [to_email],
+        "to": email_list,
         "subject": subject,
         "html": html_content
     }

@@ -2,8 +2,8 @@ name: Weather Report
 
 on:
   schedule:
-    # 07:00 Turkey time (UTC+3) = 04:00 UTC - Today's forecast
-    - cron: '0 4 * * *'
+    # 07:58 Turkey time (UTC+3) = 04:58 UTC - Today's forecast
+    - cron: '58 4 * * *'
     # 16:01 Turkey time (UTC+3) = 13:01 UTC - Tomorrow's forecast
     - cron: '1 13 * * *'
   
