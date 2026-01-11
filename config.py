@@ -13,12 +13,13 @@ LOCATION = {
     "lon": 27.4575
 }
 
-# Weather models to fetch (including ECMWF AIFS and HRES)
+# Weather models to fetch
 WEATHER_MODELS = [
     "icon_seamless",
     "gfs_seamless", 
     "ecmwf_ifs025",      # ECMWF IFS
-    "ecmwf_aifs025",     # ECMWF AIFS (AI-based)
+    "ecmwf_ifs04",       # ECMWF IFS HRES 9km
+    "ecmwf_aifs025",     # ECMWF AIFS
     "arpege_seamless"
 ]
 
@@ -44,34 +45,30 @@ EMAIL_TO = os.getenv("EMAIL_TO", "diving_club@example.com")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
 
 # LLM settings
-LLM_MODEL = "google/gemini-2.5-pro-preview-05-06"
+LLM_MODEL = "google/gemini-3-pro-preview"
 LLM_BASE_URL = "https://openrouter.ai/api/v1"
 
-# System prompt for diving safety analysis - Professional, no emojis
-SYSTEM_PROMPT = """Sen denizcilik ve dalış operasyonları için meteoroloji danışmanısın. Görevin, farklı sayısal hava tahmin modellerinden gelen verileri karşılaştırmalı olarak analiz etmek ve dalış/tekne operasyonları için objektif bir risk değerlendirmesi sunmaktır.
+# System prompt - neutral, no model bias
+SYSTEM_PROMPT = """Sen denizcilik ve dalis operasyonlari icin meteoroloji danismanisin. 
 
-ANALIZ METODU:
-1. Her modelin saatlik tahminlerini karşılaştır
-2. Model tutarlılığını değerlendir (modeller arasındaki farklar)
-3. Kritik parametreleri belirle: rüzgar hızı, hamle (gust), dalga yüksekliği, swell
-4. Varsa gerçek zamanlı istasyon verisiyle tahminleri doğrula
+Gorev: Farkli hava tahmin modellerinden gelen verileri analiz ederek dalis kulubu icin tekne operasyonu risk degerlendirmesi yap.
 
-RAPOR FORMATI:
-- Verileri tablo formatında sun
-- Her model için saatlik bazda kritik değerleri göster
-- Model güvenilirliği hakkında kısa not ekle (ECMWF genelde Akdeniz için referans model)
-- Teknik ve objektif bir dil kullan
+Analiz edilecek parametreler:
+- Ruzgar hizi (knot) ve hamle (gust)
+- Dalga yuksekligi ve swell
+- Gorus mesafesi
+- Yagis durumu
 
-KARAR KRİTERLERİ:
-- Rüzgar 15-20 knot: Orta risk, deneyimli ekip için uygun
-- Rüzgar 20+ knot: Yüksek risk
-- Hamle 30+ knot: Operasyon önerilmez
+Karar kriterleri:
+- Ruzgar 15-20 knot: Orta risk
+- Ruzgar 20+ knot: Yuksek risk
+- Hamle 30+ knot: Operasyon onerilmez
 - Dalga 1.0-1.5m: Orta deniz durumu
-- Dalga 1.5m+: Zorlu koşullar
-- Görüş 3km altı: Navigasyon riski
+- Dalga 1.5m+: Zorlu kosullar
 
-SONUC FORMATI:
-- Kısa özet paragrafı
-- Net karar: UYGUN / SINIRLI UYGUN / UYGUN DEGIL / OPERASYON ONERILMEZ
-- Varsa alternatif zaman dilimi önerisi
+Cikti:
+- Modelleri karsilastir
+- Tutarsizliklari belirt
+- Net karar ver: UYGUN / SINIRLI UYGUN / UYGUN DEGIL / OPERASYON ONERILMEZ
+- Kisa ozet ekle
 """

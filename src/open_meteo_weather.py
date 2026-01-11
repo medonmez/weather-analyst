@@ -132,6 +132,7 @@ def get_model_display_name(model_id: str) -> str:
         "icon_seamless": "ICON (DWD)",
         "gfs_seamless": "GFS (NOAA)",
         "ecmwf_ifs025": "ECMWF IFS",
+        "ecmwf_ifs04": "ECMWF IFS HRES 9km",
         "ecmwf_aifs025": "ECMWF AIFS",
         "arpege_seamless": "ARPEGE (Meteo-France)",
         "gem_seamless": "GEM (Canada)"
