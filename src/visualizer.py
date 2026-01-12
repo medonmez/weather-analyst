@@ -302,12 +302,12 @@ def _draw_data_row(ax, y: float, label: str, values: list, n_hours: int,
 
 
 def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, Any], target_date: str) -> bytes:
-    """Create a Windguru-style weather chart"""
+    """Create a Windguru-style weather chart with 5 panels"""
     if not MATPLOTLIB_AVAILABLE:
         return None
     
     plt.style.use('dark_background')
-    fig, axes = plt.subplots(4, 1, figsize=(14, 10), gridspec_kw={'height_ratios': [2, 1.5, 1, 1]})
+    fig, axes = plt.subplots(5, 1, figsize=(14, 12), gridspec_kw={'height_ratios': [2, 2, 1.5, 1, 1]})
     fig.patch.set_facecolor('#1a1a2e')
     
     hours = []
@@ -329,7 +329,7 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
         'gfs_seamless': '#f39c12'
     }
     
-    # Panel 1: Wind Speed
+    # Panel 1: Wind Speed (Rüzgar)
     ax1 = axes[0]
     ax1.set_facecolor('#16213e')
     
@@ -339,12 +339,8 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
             color = colors.get(model_id, '#ffffff')
             label = get_model_display_name(model_id)
             ax1.plot(x[:len(wind)], wind, 'o-', color=color, linewidth=2, markersize=6, label=label)
-            
-            if "wind_gusts_knots" in data and data["wind_gusts_knots"]:
-                gusts = data["wind_gusts_knots"][:len(hours)]
-                ax1.plot(x[:len(gusts)], gusts, '--', color=color, alpha=0.5, linewidth=1)
     
-    ax1.set_ylabel('Ruzgar (knot)', fontsize=11, fontweight='bold')
+    ax1.set_ylabel('Rüzgar (knot)', fontsize=11, fontweight='bold')
     ax1.set_title(f'Hava Durumu Tahmini - {target_date}', fontsize=14, fontweight='bold', pad=10)
     ax1.legend(loc='upper right', fontsize=9)
     ax1.grid(True, alpha=0.3, linestyle='--')
@@ -355,60 +351,81 @@ def create_windguru_chart(weather_data: Dict[str, Any], marine_data: Dict[str, A
     ax1.axhline(y=20, color='orange', linestyle=':', alpha=0.5, linewidth=1)
     ax1.axhline(y=25, color='red', linestyle=':', alpha=0.5, linewidth=1)
     
-    # Panel 2: Wind Direction
+    # Panel 2: Wind Gusts (Hamle) - SEPARATE PANEL
     ax2 = axes[1]
     ax2.set_facecolor('#16213e')
+    
+    for model_id, data in weather_data.items():
+        if "wind_gusts_knots" in data and data["wind_gusts_knots"]:
+            gusts = data["wind_gusts_knots"][:len(hours)]
+            color = colors.get(model_id, '#ffffff')
+            label = get_model_display_name(model_id)
+            ax2.plot(x[:len(gusts)], gusts, 's-', color=color, linewidth=2, markersize=5, label=label)
+    
+    ax2.set_ylabel('Hamle (knot)', fontsize=11, fontweight='bold')
+    ax2.legend(loc='upper right', fontsize=9)
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    ax2.set_xlim(-0.5, len(hours)-0.5)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels([])
+    ax2.axhline(y=20, color='yellow', linestyle=':', alpha=0.5, linewidth=1)
+    ax2.axhline(y=25, color='orange', linestyle=':', alpha=0.5, linewidth=1)
+    ax2.axhline(y=30, color='red', linestyle=':', alpha=0.5, linewidth=1)
+    
+    # Panel 3: Wind Direction (Yön)
+    ax3 = axes[2]
+    ax3.set_facecolor('#16213e')
     
     for model_id, data in weather_data.items():
         if "wind_direction_deg" in data and data["wind_direction_deg"]:
             dirs = data["wind_direction_deg"][:len(hours)]
             color = colors.get(model_id, '#ffffff')
-            ax2.scatter(x[:len(dirs)], dirs, color=color, s=40, alpha=0.8)
+            ax3.scatter(x[:len(dirs)], dirs, color=color, s=40, alpha=0.8)
     
-    ax2.set_ylabel('Yon (derece)', fontsize=11, fontweight='bold')
-    ax2.set_ylim(0, 360)
-    ax2.set_yticks([0, 90, 180, 270, 360])
-    ax2.set_yticklabels(['K', 'D', 'G', 'B', 'K'])
-    ax2.grid(True, alpha=0.3, linestyle='--')
-    ax2.set_xlim(-0.5, len(hours)-0.5)
-    ax2.set_xticks(x)
-    ax2.set_xticklabels([])
-    
-    # Panel 3: Wave Height
-    ax3 = axes[2]
-    ax3.set_facecolor('#16213e')
-    
-    if "wave_height_m" in marine_data and marine_data["wave_height_m"]:
-        waves = marine_data["wave_height_m"][:len(hours)]
-        ax3.bar(x[:len(waves)], waves, color='#00bcd4', alpha=0.7, label='Dalga')
-        
-        if "swell_wave_height_m" in marine_data and marine_data["swell_wave_height_m"]:
-            swell = marine_data["swell_wave_height_m"][:len(hours)]
-            ax3.plot(x[:len(swell)], swell, 'o-', color='#9c27b0', linewidth=2, label='Swell')
-    
-    ax3.set_ylabel('Dalga (m)', fontsize=11, fontweight='bold')
-    ax3.legend(loc='upper right', fontsize=9)
+    ax3.set_ylabel('Yön (derece)', fontsize=11, fontweight='bold')
+    ax3.set_ylim(0, 360)
+    ax3.set_yticks([0, 90, 180, 270, 360])
+    ax3.set_yticklabels(['K', 'D', 'G', 'B', 'K'])
     ax3.grid(True, alpha=0.3, linestyle='--')
     ax3.set_xlim(-0.5, len(hours)-0.5)
     ax3.set_xticks(x)
     ax3.set_xticklabels([])
     
-    # Panel 4: Temperature
+    # Panel 4: Wave Height (Dalga)
     ax4 = axes[3]
     ax4.set_facecolor('#16213e')
+    
+    if "wave_height_m" in marine_data and marine_data["wave_height_m"]:
+        waves = marine_data["wave_height_m"][:len(hours)]
+        ax4.bar(x[:len(waves)], waves, color='#00bcd4', alpha=0.7, label='Dalga')
+        
+        if "swell_wave_height_m" in marine_data and marine_data["swell_wave_height_m"]:
+            swell = marine_data["swell_wave_height_m"][:len(hours)]
+            ax4.plot(x[:len(swell)], swell, 'o-', color='#9c27b0', linewidth=2, label='Swell')
+    
+    ax4.set_ylabel('Dalga (m)', fontsize=11, fontweight='bold')
+    ax4.legend(loc='upper right', fontsize=9)
+    ax4.grid(True, alpha=0.3, linestyle='--')
+    ax4.set_xlim(-0.5, len(hours)-0.5)
+    ax4.set_xticks(x)
+    ax4.set_xticklabels([])
+    
+    # Panel 5: Temperature (Sıcaklık)
+    ax5 = axes[4]
+    ax5.set_facecolor('#16213e')
     
     for model_id, data in weather_data.items():
         if "temperature_c" in data and data["temperature_c"]:
             temps = data["temperature_c"][:len(hours)]
             color = colors.get(model_id, '#ffffff')
-            ax4.plot(x[:len(temps)], temps, 'o-', color=color, linewidth=2, markersize=4)
+            ax5.plot(x[:len(temps)], temps, 'o-', color=color, linewidth=2, markersize=4)
     
-    ax4.set_ylabel('Sicaklik (C)', fontsize=11, fontweight='bold')
-    ax4.set_xlabel('Saat', fontsize=11, fontweight='bold')
-    ax4.grid(True, alpha=0.3, linestyle='--')
-    ax4.set_xlim(-0.5, len(hours)-0.5)
-    ax4.set_xticks(x)
-    ax4.set_xticklabels(hours, rotation=45, ha='right')
+    ax5.set_ylabel('Sıcaklık (°C)', fontsize=11, fontweight='bold')
+    ax5.set_xlabel('Saat', fontsize=11, fontweight='bold')
+    ax5.grid(True, alpha=0.3, linestyle='--')
+    ax5.set_xlim(-0.5, len(hours)-0.5)
+    ax5.set_xticks(x)
+    ax5.set_xticklabels(hours, rotation=45, ha='right')
     
     plt.tight_layout()
     
