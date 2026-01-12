@@ -243,9 +243,31 @@ def create_windguru_table(weather_data: Dict[str, Any], marine_data: Dict[str, A
                       n_hours, '#00BCD4', get_wave_color, '{:.1f}', text_color='#0D47A1')
         current_y -= 0.7
         
+        # Wave direction (arrows)
+        wave_dirs = marine_data.get('wave_direction_deg', [])
+        ax.add_patch(plt.Rectangle((0, current_y - 0.35), 1.5, 0.7, facecolor='#0097A7', edgecolor='#2C3E50'))
+        ax.text(0.75, current_y, 'Dalga\nYönü', fontsize=7, fontweight='bold', ha='center', va='center', color='white')
+        for i in range(n_hours):
+            ax.add_patch(plt.Rectangle((i + 1.5, current_y - 0.35), 1, 0.7, facecolor='#E0F7FA', edgecolor='#2C3E50'))
+            if i < len(wave_dirs) and wave_dirs[i] is not None:
+                arrow = get_direction_arrow(wave_dirs[i])
+                ax.text(i + 2, current_y, arrow, fontsize=14, ha='center', va='center', color='#006064')
+        current_y -= 0.7
+        
         # Swell height
         _draw_data_row(ax, current_y, 'Swell\n(m)', marine_data.get('swell_wave_height_m', []),
                       n_hours, '#7C4DFF', get_wave_color, '{:.1f}', text_color='#311B92')
+        current_y -= 0.7
+        
+        # Swell direction (arrows)
+        swell_dirs = marine_data.get('swell_wave_direction_deg', [])
+        ax.add_patch(plt.Rectangle((0, current_y - 0.35), 1.5, 0.7, facecolor='#651FFF', edgecolor='#2C3E50'))
+        ax.text(0.75, current_y, 'Swell\nYönü', fontsize=7, fontweight='bold', ha='center', va='center', color='white')
+        for i in range(n_hours):
+            ax.add_patch(plt.Rectangle((i + 1.5, current_y - 0.35), 1, 0.7, facecolor='#EDE7F6', edgecolor='#2C3E50'))
+            if i < len(swell_dirs) and swell_dirs[i] is not None:
+                arrow = get_direction_arrow(swell_dirs[i])
+                ax.text(i + 2, current_y, arrow, fontsize=14, ha='center', va='center', color='#4527A0')
     
     ax.set_ylim(current_y - 1, total_rows)
     
