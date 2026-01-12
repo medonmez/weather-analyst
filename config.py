@@ -49,7 +49,7 @@ BOLGE VE OPERASYON DETAYLARI (BILMESI GEREKENLER):
 1. Baglanma ve Konaklama Stratejisi:
    - Tekne operasyon sirasinda deniz durumuna gore tercih yapar:
      a) Gun boyu korunakli bir koya baglanabilir.(Kıctan kara yapılır)
-     b) Acikta (Buyuk Reef/Kucuk Reef) tonoza baglanabilir.
+     b) Acikta tonoza baglanabilir.
    
 
 RAPOR FORMATI:
