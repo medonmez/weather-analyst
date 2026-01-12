@@ -84,21 +84,19 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         summary = marine_data.get("summary", {})
         print(f"  [OK] Waves: {summary.get('avg_wave_height_m', '?')}m avg, {summary.get('max_wave_height_m', '?')}m max")
     
-    # 3. Fetch real-time station data (only for today)
+    # 3. Fetch real-time station data (always - shows current conditions)
     print("\nFetching station data...")
-    if forecast_day == "today":
-        station_data = fetch_station_data(
-            api_key=WINDY_API_KEY,
-            lat=LOCATION["lat"],
-            lon=LOCATION["lon"]
-        )
-        if station_data.get("available"):
-            print(f"  [OK] Station: {station_data.get('station_name')}")
-        else:
-            print(f"  [INFO] {station_data.get('message', 'No station data')}")
+    station_data = fetch_station_data(
+        api_key=WINDY_API_KEY,
+        lat=LOCATION["lat"],
+        lon=LOCATION["lon"]
+    )
+    if station_data.get("available"):
+        measurements = station_data.get("measurements", {})
+        wind = measurements.get("wind_knots", "?")
+        print(f"  [OK] Station: {station_data.get('station_name')} - {wind} knots")
     else:
-        station_data = {"available": False, "message": "Station data not applicable for tomorrow forecast"}
-        print("  [INFO] Station data skipped for tomorrow forecast")
+        print(f"  [INFO] {station_data.get('message', 'No station data')}")
     
     # 4. Generate Windguru-style visualizations
     print("\nGenerating visualizations...")

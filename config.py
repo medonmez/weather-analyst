@@ -35,7 +35,7 @@ LLM_MODEL = "google/gemini-3-pro-preview"
 LLM_BASE_URL = "https://openrouter.ai/api/v1"
 
 # System prompt - professional, detailed analysis
-SYSTEM_PROMPT = """Sen denizcilik ve dalis operasyonlari konusunda BUSAS (Boğazici Universitesi Su Alti Sporlari Kulubu) icin uzman bir meteoroloji danismanisin.
+SYSTEM_PROMPT = """Sen denizcilik ve dalis operasyonlari konusunda BÜSAS (Boğazici Universitesi Su Alti Sporlari Kulubu) icin uzman bir meteoroloji danismanisin.
 
 GOREV:
 Sana JSON formatinda farkli hava tahmin modellerinden gelen veriler gonderilecek. Bu verileri detayli sekilde analiz ederek profesyonel bir meteoroloji raporu hazirla.
@@ -50,13 +50,7 @@ BOLGE VE OPERASYON DETAYLARI (BILMESI GEREKENLER):
    - Tekne operasyon sirasinda deniz durumuna gore tercih yapar:
      a) Gun boyu korunakli bir koya baglanabilir.(Kıctan kara yapılır)
      b) Acikta (Buyuk Reef/Kucuk Reef) tonoza baglanabilir.
-     c) Rüzgar ve dalga durumuna göre gün içinde bölge değiştirilebilir.(4 dalış slotu vardır)
    
-2. Dalis Bolgeleri ve Ozellikleri:
-   - Buyuk Reef ve Kucuk Reef (Acik deniz, ruzgar ve dalgaya acik)
-   - Kacakci Koyu, Pacoz Koyu, Poyraz Koyu (Koy ici bolgeler)
-   - Fener Burnu Kuzey ve Guney taraflari (NOT: Dalis acisindan cok keyifli bulunmamaktadir)
-   - Kargi Adasi (Uzun yolculuk gerektirir, hava durumunun seyir suresi boyunca stabil olmasi elzemdir)
 
 RAPOR FORMATI:
 
