@@ -27,48 +27,89 @@ def fetch_station_data(api_key: str, lat: float, lon: float) -> Dict[str, Any]:
             "message": "Windy API key not configured"
         }
     
-    # First, try to get list of open data stations
+    # Try different API endpoints
     try:
-        # Get stations with open data policy
-        stations_url = f"https://stations.windy.com/pws/stations/open/{api_key}"
-        response = requests.get(stations_url, timeout=15)
+        # Method 1: Get nearby stations using lat/lon
+        nearby_url = f"https://stations.windy.com/pws/stations/nearby"
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "limit": 5,
+            "key": api_key
+        }
+        response = requests.get(nearby_url, params=params, timeout=15)
         
-        if response.status_code != 200:
-            return {
-                "available": False,
-                "message": f"Could not fetch stations: {response.status_code}"
-            }
+        if response.status_code == 200:
+            stations = response.json()
+            if stations:
+                nearest = stations[0]  # First is nearest
+                return fetch_single_station(api_key, nearest)
         
-        stations = response.json()
+        # Method 2: Get open data stations and find nearest
+        open_url = f"https://stations.windy.com/pws/stations/open"
+        params = {"key": api_key}
+        response = requests.get(open_url, params=params, timeout=15)
         
-        # Find nearest station to our location
-        nearest = find_nearest_station(stations, lat, lon)
+        if response.status_code == 200:
+            stations = response.json()
+            nearest = find_nearest_station(stations, lat, lon)
+            if nearest:
+                return fetch_single_station(api_key, nearest)
         
-        if not nearest:
-            return {
-                "available": False,
-                "message": "No nearby stations found"
-            }
+        # Method 3: Try legacy endpoint format
+        legacy_url = f"https://stations.windy.com/pws/stations/open/{api_key}"
+        response = requests.get(legacy_url, timeout=15)
         
-        # Fetch data from nearest station
-        station_id = nearest["id"]
-        data_url = f"https://stations.windy.com/pws/station/open/{api_key}/{station_id}"
-        data_response = requests.get(data_url, timeout=15)
+        if response.status_code == 200:
+            stations = response.json()
+            nearest = find_nearest_station(stations, lat, lon)
+            if nearest:
+                station_id = nearest.get("id")
+                data_url = f"https://stations.windy.com/pws/station/open/{api_key}/{station_id}"
+                data_response = requests.get(data_url, timeout=15)
+                if data_response.status_code == 200:
+                    return process_station_data(data_response.json(), nearest)
         
-        if data_response.status_code != 200:
-            return {
-                "available": False,
-                "message": f"Could not fetch station data: {data_response.status_code}"
-            }
-        
-        station_data = data_response.json()
-        return process_station_data(station_data, nearest)
+        return {
+            "available": False,
+            "message": f"No stations found in Bodrum area (API returned {response.status_code})"
+        }
         
     except requests.RequestException as e:
         return {
             "available": False,
             "message": f"API error: {str(e)}"
         }
+
+
+def fetch_single_station(api_key: str, station: Dict) -> Dict[str, Any]:
+    """Fetch data from a single station"""
+    station_id = station.get("id") or station.get("stationId")
+    
+    if not station_id:
+        return {"available": False, "message": "No station ID found"}
+    
+    try:
+        # Try different data endpoints
+        endpoints = [
+            f"https://stations.windy.com/pws/station/open/{api_key}/{station_id}",
+            f"https://stations.windy.com/pws/station/{station_id}?key={api_key}"
+        ]
+        
+        for url in endpoints:
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                data = response.json()
+                return process_station_data(data, {
+                    "id": station_id,
+                    "name": station.get("name", "Unknown"),
+                    "distance_km": station.get("distance_km", station.get("distance", 0))
+                })
+        
+        return {"available": False, "message": f"Could not fetch station {station_id}"}
+        
+    except requests.RequestException as e:
+        return {"available": False, "message": f"Station fetch error: {str(e)}"}
 
 
 def find_nearest_station(stations: list, lat: float, lon: float, max_distance_km: float = 50) -> Optional[Dict]:
@@ -112,11 +153,9 @@ def find_nearest_station(stations: list, lat: float, lon: float, max_distance_km
 
 def process_station_data(data: Dict, station_info: Dict) -> Dict[str, Any]:
     """Process station data into standardized format"""
-    # Windy station data structure may vary
-    # Common fields: temp, wind, windDir, gust, pressure, humidity
-    
     MS_TO_KNOTS = 1.94384
     
+    # Handle both list and dict responses
     latest = data[-1] if isinstance(data, list) and data else data
     
     result = {
