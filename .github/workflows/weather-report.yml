@@ -2,10 +2,10 @@ name: Weather Report
 
 on:
   schedule:
-    # 07:58 Turkey time (UTC+3) = 04:58 UTC - Today's forecast
-    - cron: '58 4 * * *'
-    # 16:01 Turkey time (UTC+3) = 13:01 UTC - Tomorrow's forecast
-    - cron: '1 13 * * *'
+    # 07:38 Turkey time (UTC+3) = 04:38 UTC - Today's forecast
+    - cron: '38 4 * * *'
+    # 15:41 Turkey time (UTC+3) = 12:41 UTC - Tomorrow's forecast
+    - cron: '41 12 * * *'
   
   # Manual trigger for testing
   workflow_dispatch:

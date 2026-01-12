@@ -23,21 +23,6 @@ def send_report_email(
 ) -> dict:
     """
     Send weather analysis report via Resend with JSON, chart, and table attachments
-    
-    Args:
-        api_key: Resend API key
-        to_email: Recipient email
-        from_email: Sender email
-        location_name: Location name for subject
-        analysis: LLM analysis text
-        raw_data: Raw weather data to attach as JSON
-        chart_bytes: PNG chart bytes
-        table_bytes: PNG table bytes
-        subject: Optional custom subject
-        forecast_day: "today" or "tomorrow"
-    
-    Returns:
-        Resend API response
     """
     if not api_key:
         return {"error": "Resend API key not configured"}
@@ -45,13 +30,13 @@ def send_report_email(
     resend.api_key = api_key
     
     now = datetime.now()
-    date_str = now.strftime("%d %B %Y")
-    report_type = "Bugun" if forecast_day == "today" else "Yarin"
+    date_str = now.strftime("%d.%m.%Y")
+    report_type = "Bugün" if forecast_day == "today" else "Yarın"
     
     if not subject:
-        subject = f"{location_name} Raporu - {report_type} - {date_str}"
+        subject = f"Bodrum Hava Durumu Raporu - {report_type} - {date_str}"
     
-    html_content = generate_html_email(analysis, location_name, date_str, report_type)
+    html_content = generate_html_email(analysis)
     
     # Parse comma-separated emails into list
     if isinstance(to_email, str):
@@ -108,10 +93,10 @@ def send_report_email(
         return {"error": str(e)}
 
 
-def generate_html_email(analysis: str, location: str, date: str, time_of_day: str) -> str:
-    """Generate professional HTML email from markdown analysis"""
+def generate_html_email(analysis: str) -> str:
+    """Generate clean HTML email from markdown analysis - no extra header"""
     
-    # Convert markdown to basic HTML
+    # Convert markdown to HTML
     html_analysis = markdown_to_html(analysis)
     
     return f"""<!DOCTYPE html>
@@ -122,7 +107,7 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            line-height: 1.6;
+            line-height: 1.7;
             color: #1a1a1a;
             max-width: 800px;
             margin: 0 auto;
@@ -135,22 +120,6 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
             padding: 32px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.12);
             border: 1px solid #e1e5e9;
-        }}
-        .header {{
-            border-bottom: 2px solid #1a365d;
-            padding-bottom: 16px;
-            margin-bottom: 24px;
-        }}
-        .header h1 {{
-            color: #1a365d;
-            margin: 0;
-            font-size: 22px;
-            font-weight: 600;
-        }}
-        .header .subtitle {{
-            color: #4a5568;
-            font-size: 14px;
-            margin-top: 4px;
         }}
         .content {{
             font-size: 14px;
@@ -174,6 +143,14 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
         tr:nth-child(even) {{
             background: #f7fafc;
         }}
+        h1 {{
+            color: #1a365d;
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #1a365d;
+        }}
         h2 {{
             color: #1a365d;
             font-size: 16px;
@@ -188,26 +165,18 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
             margin-top: 20px;
             margin-bottom: 8px;
         }}
-        .decision {{
-            padding: 16px;
-            margin: 24px 0;
-            border-radius: 6px;
+        ul {{
+            margin: 8px 0;
+            padding-left: 24px;
+        }}
+        li {{
+            margin: 4px 0;
+        }}
+        strong {{
             font-weight: 600;
         }}
-        .decision-uygun {{
-            background: #c6f6d5;
-            color: #22543d;
-            border-left: 4px solid #38a169;
-        }}
-        .decision-sinirli {{
-            background: #fefcbf;
-            color: #744210;
-            border-left: 4px solid #d69e2e;
-        }}
-        .decision-degil {{
-            background: #fed7d7;
-            color: #742a2a;
-            border-left: 4px solid #e53e3e;
+        p {{
+            margin: 8px 0;
         }}
         .footer {{
             text-align: center;
@@ -217,27 +186,17 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
             padding-top: 16px;
             border-top: 1px solid #e2e8f0;
         }}
-        strong {{
-            font-weight: 600;
-        }}
-        p {{
-            margin: 8px 0;
-        }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>{location} - Meteoroloji Raporu</h1>
-            <div class="subtitle">{date} | {time_of_day} Analizi</div>
-        </div>
         <div class="content">
             {html_analysis}
         </div>
         <div class="footer">
             Bu rapor otomatik olarak olusturulmustur.<br>
-            Veri Kaynaklari: Open-Meteo (ECMWF, ICON, GFS, ARPEGE), Windy Stations<br>
-            Analiz: Google Gemini AI | JSON verisi ekte mevcuttur.
+            Veri Kaynaklari: Open-Meteo (ECMWF, ICON-EU, GFS, Meteo-France)<br>
+            Analiz: Gemini AI
         </div>
     </div>
 </body>
@@ -245,7 +204,7 @@ def generate_html_email(analysis: str, location: str, date: str, time_of_day: st
 
 
 def markdown_to_html(md: str) -> str:
-    """Convert markdown to HTML"""
+    """Convert markdown to HTML with proper bullet point support"""
     import re
     
     html = md
@@ -258,13 +217,20 @@ def markdown_to_html(md: str) -> str:
     # Bold
     html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
     
-    # Tables
+    # Process lines for tables and bullet points
     lines = html.split('\n')
     in_table = False
+    in_list = False
     result_lines = []
     
     for line in lines:
-        if '|' in line and line.strip().startswith('|'):
+        stripped = line.strip()
+        
+        # Table handling
+        if '|' in line and stripped.startswith('|'):
+            if in_list:
+                result_lines.append('</ul>')
+                in_list = False
             if not in_table:
                 result_lines.append('<table>')
                 in_table = True
@@ -274,22 +240,44 @@ def markdown_to_html(md: str) -> str:
                 continue
             
             cells = [c.strip() for c in line.split('|')[1:-1]]
-            row_type = 'th' if not any('<table>' in l for l in result_lines[-5:]) or result_lines[-1] == '<table>' else 'td'
+            row_type = 'th' if result_lines[-1] == '<table>' else 'td'
             row = '<tr>' + ''.join(f'<{row_type}>{c}</{row_type}>' for c in cells) + '</tr>'
             result_lines.append(row)
+        
+        # Bullet point handling (* or -)
+        elif stripped.startswith('* ') or stripped.startswith('- '):
+            if in_table:
+                result_lines.append('</table>')
+                in_table = False
+            if not in_list:
+                result_lines.append('<ul>')
+                in_list = True
+            
+            # Remove the bullet marker and add li tag
+            content = stripped[2:]
+            result_lines.append(f'<li>{content}</li>')
+        
         else:
             if in_table:
                 result_lines.append('</table>')
                 in_table = False
+            if in_list:
+                result_lines.append('</ul>')
+                in_list = False
             result_lines.append(line)
     
     if in_table:
         result_lines.append('</table>')
+    if in_list:
+        result_lines.append('</ul>')
     
     html = '\n'.join(result_lines)
     
-    # Line breaks
-    html = html.replace('\n\n', '</p><p>')
-    html = '<p>' + html + '</p>'
+    # Line breaks - but not inside lists or tables
+    html = re.sub(r'\n\n(?![<])', '</p><p>', html)
+    
+    # Wrap in paragraph if not starting with HTML tag
+    if not html.strip().startswith('<'):
+        html = '<p>' + html + '</p>'
     
     return html
