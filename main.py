@@ -107,12 +107,19 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
         print("  [INFO] Chart generation skipped")
     
     # Generate Windguru-style table
-    from src.visualizer import create_windguru_table
+    from src.visualizer import create_windguru_table, create_station_infographic
     table_bytes = create_windguru_table(weather_data, marine_data, target_date)
     if table_bytes:
         print("  [OK] Table generated")
     else:
         print("  [INFO] Table generation skipped")
+    
+    # Generate station infographic
+    station_infographic_bytes = create_station_infographic(station_data, LOCATION)
+    if station_infographic_bytes:
+        print("  [OK] Station infographic generated")
+    else:
+        print("  [INFO] Station infographic skipped")
     
     # 5. Analyze with LLM
     print("\nAnalyzing with LLM...")
@@ -164,6 +171,12 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
                 f.write(table_bytes)
             print(f"Table saved to: {table_path}")
         
+        if station_infographic_bytes:
+            station_path = f"/tmp/weather_station_{target_date}.png"
+            with open(station_path, 'wb') as f:
+                f.write(station_infographic_bytes)
+            print(f"Station infographic saved to: {station_path}")
+        
         if no_email:
             print("\nEmail sending skipped (--no-email)")
         else:
@@ -179,6 +192,7 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
             raw_data=raw_data,
             chart_bytes=chart_bytes,
             table_bytes=table_bytes,
+            station_bytes=station_infographic_bytes,
             forecast_day=forecast_day
         )
         

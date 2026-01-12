@@ -18,11 +18,12 @@ def send_report_email(
     raw_data: Optional[Dict[str, Any]] = None,
     chart_bytes: Optional[bytes] = None,
     table_bytes: Optional[bytes] = None,
+    station_bytes: Optional[bytes] = None,
     subject: Optional[str] = None,
     forecast_day: str = "today"
 ) -> dict:
     """
-    Send weather analysis report via Resend with JSON, chart, and table attachments
+    Send weather analysis report via Resend with attachments
     """
     if not api_key:
         return {"error": "Resend API key not configured"}
@@ -80,6 +81,14 @@ def send_report_email(
         attachments.append({
             "filename": f"weather_table_{now.strftime('%Y%m%d_%H%M')}.png",
             "content": table_base64
+        })
+    
+    # Add station infographic PNG if provided
+    if station_bytes:
+        station_base64 = base64.b64encode(station_bytes).decode('utf-8')
+        attachments.append({
+            "filename": f"weather_station_{now.strftime('%Y%m%d_%H%M')}.png",
+            "content": station_base64
         })
     
     if attachments:

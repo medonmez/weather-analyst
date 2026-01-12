@@ -448,3 +448,151 @@ def chart_to_base64(chart_bytes: bytes) -> str:
     if chart_bytes is None:
         return None
     return base64.b64encode(chart_bytes).decode('utf-8')
+
+
+def create_station_infographic(station_data: Dict[str, Any], location: Dict[str, Any]) -> bytes:
+    """
+    Create an infographic showing current station measurements
+    
+    Args:
+        station_data: Station data with measurements
+        location: Location info with lat/lon
+    
+    Returns:
+        PNG image as bytes
+    """
+    if not MATPLOTLIB_AVAILABLE:
+        return None
+    
+    if not station_data.get("available"):
+        return None
+    
+    measurements = station_data.get("measurements", {})
+    if not measurements:
+        return None
+    
+    # Create figure
+    fig = plt.figure(figsize=(10, 6))
+    fig.patch.set_facecolor('#1a1a2e')
+    
+    # Main title
+    station_name = station_data.get("station_name", "İstasyon")
+    obs_time = station_data.get("observation_time", "")
+    if obs_time:
+        try:
+            dt = datetime.fromisoformat(obs_time.replace("Z", "+00:00"))
+            obs_time_str = dt.strftime("%H:%M UTC")
+        except:
+            obs_time_str = obs_time
+    else:
+        obs_time_str = ""
+    
+    fig.suptitle(f'ANLIK HAVA DURUMU', fontsize=18, fontweight='bold', color='white', y=0.98)
+    fig.text(0.5, 0.92, f'{station_name} | {obs_time_str}', fontsize=12, ha='center', color='#BDC3C7')
+    
+    # Create grid for cards
+    gs = fig.add_gridspec(2, 4, hspace=0.3, wspace=0.3, left=0.05, right=0.95, top=0.85, bottom=0.15)
+    
+    # Card 1: Temperature
+    ax1 = fig.add_subplot(gs[0, 0])
+    _draw_metric_card(ax1, 'SICAKLIK', 
+                     f"{measurements.get('temperature_c', '--')}°C",
+                     '#FF5722', '#FBE9E7')
+    
+    # Card 2: Wind Speed
+    ax2 = fig.add_subplot(gs[0, 1])
+    wind = measurements.get('wind_knots', '--')
+    wind_color = get_wind_color(wind) if isinstance(wind, (int, float)) else '#E3F2FD'
+    _draw_metric_card(ax2, 'RUZGAR', 
+                     f"{wind} knot",
+                     '#2196F3', wind_color)
+    
+    # Card 3: Wind Direction with compass
+    ax3 = fig.add_subplot(gs[0, 2])
+    wind_dir = measurements.get('wind_direction', '--')
+    if isinstance(wind_dir, (int, float)):
+        arrow = get_direction_arrow(wind_dir)
+        dir_text = f"{arrow} {wind_dir}°"
+    else:
+        dir_text = str(wind_dir)
+    _draw_metric_card(ax3, 'YON', dir_text, '#9C27B0', '#F3E5F5')
+    
+    # Card 4: Gust
+    ax4 = fig.add_subplot(gs[0, 3])
+    gust = measurements.get('gust_knots', '--')
+    gust_color = get_wind_color(gust) if isinstance(gust, (int, float)) else '#FFEBEE'
+    _draw_metric_card(ax4, 'HAMLE', 
+                     f"{gust} knot" if gust != '--' else "Yok",
+                     '#E91E63', gust_color if gust != '--' else '#FAFAFA')
+    
+    # Card 5: Pressure
+    ax5 = fig.add_subplot(gs[1, 0])
+    pressure = measurements.get('pressure_hpa', '--')
+    _draw_metric_card(ax5, 'BASINC', 
+                     f"{pressure} hPa",
+                     '#00BCD4', '#E0F7FA')
+    
+    # Card 6: Visibility
+    ax6 = fig.add_subplot(gs[1, 1])
+    vis = measurements.get('visibility_km', '--')
+    _draw_metric_card(ax6, 'GORUS', 
+                     f"{vis} km",
+                     '#4CAF50', '#E8F5E9')
+    
+    # Card 7: Dewpoint
+    ax7 = fig.add_subplot(gs[1, 2])
+    dewpoint = measurements.get('dewpoint_c', '--')
+    _draw_metric_card(ax7, 'CIG NOKTASI', 
+                     f"{dewpoint}°C",
+                     '#607D8B', '#ECEFF1')
+    
+    # Card 8: Location Info
+    ax8 = fig.add_subplot(gs[1, 3])
+    icao = station_data.get('station_icao', 'LTFE')
+    wmo = station_data.get('station_wmo', '17290')
+    _draw_metric_card(ax8, 'ISTASYON', 
+                     f"ICAO: {icao}\nWMO: {wmo}",
+                     '#795548', '#EFEBE9', small_text=True)
+    
+    # Footer with location
+    lat = location.get('lat', 36.97)
+    lon = location.get('lon', 27.46)
+    fig.text(0.5, 0.03, f'Konum: {location.get("name", "Bodrum")} | Koordinat: {lat:.3f}°K, {lon:.3f}°D', 
+             fontsize=10, ha='center', color='#95A5A6')
+    
+    # Save to bytes
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', dpi=120, facecolor='#1a1a2e', edgecolor='none', bbox_inches='tight')
+    buf.seek(0)
+    infographic_bytes = buf.getvalue()
+    plt.close()
+    
+    return infographic_bytes
+
+
+def _draw_metric_card(ax, title: str, value: str, accent_color: str, bg_color: str, small_text: bool = False):
+    """Draw a metric card with title and value"""
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis('off')
+    
+    # Background card
+    card = plt.Rectangle((0.02, 0.02), 0.96, 0.96, facecolor=bg_color, 
+                         edgecolor=accent_color, linewidth=3, 
+                         transform=ax.transAxes, zorder=1)
+    ax.add_patch(card)
+    
+    # Title bar
+    title_bar = plt.Rectangle((0.02, 0.75), 0.96, 0.23, facecolor=accent_color,
+                              transform=ax.transAxes, zorder=2)
+    ax.add_patch(title_bar)
+    
+    # Title text
+    ax.text(0.5, 0.87, title, fontsize=10, fontweight='bold', 
+           ha='center', va='center', color='white', transform=ax.transAxes, zorder=3)
+    
+    # Value text
+    fontsize = 11 if small_text else 18
+    ax.text(0.5, 0.4, value, fontsize=fontsize, fontweight='bold', 
+           ha='center', va='center', color='#2C3E50', transform=ax.transAxes, zorder=3)
+
