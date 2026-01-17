@@ -9,8 +9,8 @@ load_dotenv()
 # Location: Kara Ada, Bodrum
 LOCATION = {
     "name": "Kara Ada, Bodrum",
-    "lat": 36.9710,
-    "lon": 27.4575
+    "lat": 36.980,
+    "lon": 27.415
 }
 
 # Weather models to fetch (4 models)
@@ -78,6 +78,7 @@ RAPOR FORMATI:
    - Yagis durumu
    - Gorus mesafesi
    - Sicaklik
+   - Eger sensor verisi mevcutsa ve bugunun tahminiyle karsilastirilabilirse, anlik sensor verisini (ruzgar, sicaklik vb.) model tahminleriyle karsilastir ve tutarlilik durumunu degerlendir
 
 6. SONUC VE DEGERLENDIRME
    - Butun verilerin genel degerlendirmesi

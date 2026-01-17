@@ -4,8 +4,8 @@ on:
   schedule:
     # 07:38 Turkey time (UTC+3) = 04:38 UTC - Today's forecast
     - cron: '38 4 * * *'
-    # 15:41 Turkey time (UTC+3) = 12:41 UTC - Tomorrow's forecast
-    - cron: '41 12 * * *'
+    # 15:11 Turkey time (UTC+3) = 12:11 UTC - Tomorrow's forecast
+    - cron: '11 12 * * *'
   
   # Manual trigger for testing
   workflow_dispatch:
