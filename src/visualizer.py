@@ -493,19 +493,21 @@ def create_station_infographic(station_data: Dict[str, Any], location: Dict[str,
     fig.patch.set_facecolor('#1a1a2e')
     
     # Main title
-    station_name = station_data.get("station_name", "İstasyon")
     obs_time = station_data.get("observation_time", "")
     if obs_time:
         try:
+            from datetime import timedelta
             dt = datetime.fromisoformat(obs_time.replace("Z", "+00:00"))
-            obs_time_str = dt.strftime("%H:%M UTC")
+            # Convert UTC to Turkey time (UTC+3)
+            turkey_time = dt + timedelta(hours=3)
+            obs_time_str = turkey_time.strftime("%H:%M")
         except:
             obs_time_str = obs_time
     else:
         obs_time_str = ""
     
-    fig.suptitle(f'ANLIK HAVA DURUMU', fontsize=18, fontweight='bold', color='white', y=0.98)
-    fig.text(0.5, 0.92, f'{station_name} | {obs_time_str}', fontsize=12, ha='center', color='#BDC3C7')
+    fig.suptitle('ANLIK SENSÖR VERİSİ', fontsize=18, fontweight='bold', color='white', y=0.98)
+    fig.text(0.5, 0.92, f'Bodrum | {obs_time_str}', fontsize=12, ha='center', color='#BDC3C7')
     
     # Create grid for cards
     gs = fig.add_gridspec(2, 4, hspace=0.3, wspace=0.3, left=0.05, right=0.95, top=0.85, bottom=0.15)
