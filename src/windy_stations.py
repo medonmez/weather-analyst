@@ -8,11 +8,10 @@ from typing import Dict, Any
 from datetime import datetime
 
 
-# Bodrum Milas Airport - WMO 17290, ICAO: LTFE
+# Bodrum - WMO 17290, ICAO: LTFE
 DEFAULT_STATION = {
     "icao": "LTFE",
-    "wmo": "17290",
-    "name": "Bodrum-Milas Havalimanı"
+    "wmo": "17290"
 }
 
 
@@ -79,7 +78,6 @@ def process_metar_data(metar: Dict) -> Dict[str, Any]:
     
     result = {
         "available": True,
-        "station_name": DEFAULT_STATION["name"],
         "station_icao": metar.get("icaoId", DEFAULT_STATION["icao"]),
         "station_wmo": DEFAULT_STATION["wmo"],
         "observation_time": metar.get("reportTime"),

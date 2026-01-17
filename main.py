@@ -94,7 +94,7 @@ def main(test_mode: bool = False, no_email: bool = False, forecast_day: str = "t
     if station_data.get("available"):
         measurements = station_data.get("measurements", {})
         wind = measurements.get("wind_knots", "?")
-        print(f"  [OK] Station: {station_data.get('station_name')} - {wind} knots")
+        print(f"  [OK] Station: {station_data.get('station_icao', 'LTFE')} - {wind} knots")
     else:
         print(f"  [INFO] {station_data.get('message', 'No station data')}")
     
