@@ -1,13 +1,18 @@
 name: Weather Report
 
 on:
-  schedule:
-    # 07:38 Turkey time (UTC+3) = 04:38 UTC - Today's forecast
-    - cron: '38 4 * * *'
-    # 15:11 Turkey time (UTC+3) = 12:11 UTC - Tomorrow's forecast
-    - cron: '11 12 * * *'
+  # ============================================================================
+  # OTOMATIK ZAMANLAMA (DEVRE DIŞI)
+  # Tekrar aktif etmek için aşağıdaki 'schedule:' ve 'cron:' satırlarındaki
+  # yorum işaretlerini (#) kaldırın.
+  # ============================================================================
+  # schedule:
+  #   # 07:38 Turkey time (UTC+3) = 04:38 UTC - Today's forecast
+  #   - cron: '38 4 * * *'
+  #   # 15:11 Turkey time (UTC+3) = 12:11 UTC - Tomorrow's forecast
+  #   - cron: '11 12 * * *'
   
-  # Manual trigger for testing
+  # Manual trigger - GitHub Actions sekmesinden "Run workflow" butonuyla çalıştırın
   workflow_dispatch:
     inputs:
       forecast_day:
